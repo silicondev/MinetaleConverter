@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "MinetaleConverter.ConsoleApp": {
+      "commandName": "Project",
+      "commandLineArgs": "TestWorld TestChunks"
+    }
+  }
+}
