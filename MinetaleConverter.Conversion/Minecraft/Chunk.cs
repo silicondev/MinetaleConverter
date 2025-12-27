@@ -16,17 +16,15 @@ namespace MinetaleConverter.Conversion.Minecraft
         public int zPos { get; internal set; }
         public int yPos { get; internal set; }
         public string Status { get; internal set; }
-        [NbtConverter(typeof(DateConverter))]
-        public DateTime LastUpdate { get; internal set; }
+        public long LastUpdate { get; internal set; }
         [NbtProperty("sections")]
         public List<Section> Sections { get; internal set; } = new List<Section>();
         public Heightmaps Heightmaps { get; internal set; } = new Heightmaps();
         internal byte[] data { get; set; }
-    }
-
-    internal class DateConverter : INbtConverter
-    {
-        public object? Convert(string value) =>
-            new DateTime(long.Parse(value.ToLower().Replace("l", "")));
+        [NbtProperty("fluid_ticks")]
+        public List<TileTick> FluidTicks { get; internal set; } = new List<TileTick>();
+        [NbtProperty("block_ticks")]
+        public List<TileTick> BlockTicks { get; internal set; } = new List<TileTick>();
+        public long InhabitedTime { get; internal set; }
     }
 }

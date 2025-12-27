@@ -25,20 +25,7 @@ namespace MinetaleConverter.Base
                 propDict.Add(key, property);
             }
 
-            var elements = tag.Keys.Select(x =>
-            {
-                var type = tag[x].Type;
-
-                switch (type)
-                {
-                    case TagType.Compound:
-                        return tag.Find<CompoundTag>(x);
-                    default:
-                        return tag[x];
-                }
-            });
-
-            foreach (var element in elements)
+            foreach (var element in tag)
             {
                 if (element == null ||
                     element.Name == null)
