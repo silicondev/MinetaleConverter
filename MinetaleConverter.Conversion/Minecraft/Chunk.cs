@@ -26,5 +26,17 @@ namespace MinetaleConverter.Conversion.Minecraft
         [NbtProperty("block_ticks")]
         public List<TileTick> BlockTicks { get; internal set; } = new List<TileTick>();
         public long InhabitedTime { get; internal set; }
+        public byte[] NbtData { get; internal set; }
+
+        public Palette? GetBlock(int x, int y, int z)
+        {
+            int sectionId = (int)(y / 16d);
+
+            var section = Sections.FirstOrDefault(x => x.Y == sectionId);
+            if (section == null)
+                return null;
+
+            return section.GetBlock(x, y - (sectionId * 16), z);
+        }
     }
 }

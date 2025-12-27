@@ -12,14 +12,14 @@ namespace MinetaleConverter.Conversion.Minecraft
         [NbtProperty("i")]
         public string Id { get; internal set; }
         [NbtProperty("p")]
-        public string P { get; internal set; }
+        public int P { get; internal set; }
         [NbtProperty("t")]
-        public string T { get; internal set; }
+        public int T { get; internal set; }
         [NbtProperty("x")]
-        public string X { get; internal set; }
+        public int X { get; internal set; }
         [NbtProperty("y")]
-        public string Y { get; internal set; }
+        public int Y { get; internal set; }
         [NbtProperty("z")]
-        public string Z { get; internal set; }
+        public int Z { get; internal set; }
     }
 }

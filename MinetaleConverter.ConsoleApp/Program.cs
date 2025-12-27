@@ -1,6 +1,6 @@
 ﻿using MinetaleConverter.Compression;
-using MinetaleConverter.Conversion.Minecraft;
 using System;
+using MinetaleConverter.Conversion.Minecraft;
 
 namespace MinetaleConverter.ConsoleApp
 {
@@ -8,7 +8,7 @@ namespace MinetaleConverter.ConsoleApp
     {
         public static bool DEBUGMODE = true;
 
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             if (args.Length < 2)
                 return;
@@ -22,8 +22,9 @@ namespace MinetaleConverter.ConsoleApp
             }
 
             Directory.CreateDirectory(args[1]);
-
-            var success = MinecraftWorld.FromFile(args[0], out MinecraftWorld? world);
+            var logger = new ConsoleLogger();
+            var world = new MinecraftWorld(logger);
+            var success = await world.ImportFile(args[0]);
 
             if (!success || world == null)
                 return;
@@ -41,6 +42,29 @@ namespace MinetaleConverter.ConsoleApp
                         }
                     }
                 }
+            }
+
+            while (true)
+            {
+                Console.Write("Enter coordinates (\"x,y,z\"), or 'quit' to quit: ");
+                string? coordStr = Console.ReadLine();
+                if (string.IsNullOrEmpty(coordStr))
+                {
+                    Console.WriteLine("No input given.");
+                    continue;
+                }
+                if (coordStr.Trim().ToLower() == "quit")
+                    break;
+                var spl = coordStr.Replace(" ", "").Split(",");
+                if (spl.Length != 3 ||
+                    !int.TryParse(spl[0], out int x) ||
+                    !int.TryParse(spl[1], out int y) ||
+                    !int.TryParse(spl[2], out int z))
+                {
+                    Console.WriteLine("Invalid input.");
+                    continue;
+                }
+                Console.WriteLine(world.GetBlockId(x, y, z));
             }
         }
     }

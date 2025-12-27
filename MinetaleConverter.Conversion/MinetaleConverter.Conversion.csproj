@@ -15,8 +15,4 @@
     <ProjectReference Include="..\MinetaleConverter.Compression\MinetaleConverter.Compression.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Minecraft\Entities\" />
-  </ItemGroup>
-
 </Project>

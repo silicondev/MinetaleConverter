@@ -35,6 +35,7 @@ namespace MinetaleConverter.Base
                     continue;
 
                 var property = propDict[element.Name];
+                bool isStringProperty = property.PropertyType == typeof(string);
 
                 var tagTypeAttr = property.GetAttribute<NbtTagTypeAttribute>();
                 var tagType = tagTypeAttr?.Type ?? element.Type;
@@ -48,29 +49,68 @@ namespace MinetaleConverter.Base
                         break;
                     case TagType.List:
                         var listTag = (ListTag)element;
-                        Type elementType = property.PropertyType.GetGenericArguments().Single();
-                        Type listType = typeof(List<>).MakeGenericType(new[] { elementType });
-                        IList list = (IList)Activator.CreateInstance(listType);
+                        Type[] elementTypes = property.PropertyType.GetGenericArguments();
+                        bool isDict = elementTypes.Length > 1;
+
+                        ICollection list;
+                        if (isDict)
+                        {
+                            Type listType = typeof(Dictionary<,>).MakeGenericType(new[] { elementTypes[0], elementTypes[1] });
+                            list = (IDictionary)Activator.CreateInstance(listType);
+                        }
+                        else
+                        {
+                            Type elementType = elementTypes[0];
+                            bool isString = elementType == typeof(string);
+                            Type listType = typeof(List<>).MakeGenericType(new[] { elementType });
+                            list = (IList)Activator.CreateInstance(listType);
+                        }
 
                         if (listTag.ChildType == TagType.Compound)
                         {
-                            foreach (var el in listTag)
+                            if (isDict)
                             {
-                                var elementInstance = Activator.CreateInstance(elementType);
-                                FillFromTag(elementInstance, (CompoundTag)el);
-                                list.Add(elementInstance);
+                                foreach (var el in listTag)
+                                {
+                                    var elementInstance = Activator.CreateInstance(elementTypes[1]);
+                                    FillFromTag(elementInstance, (CompoundTag)el);
+                                    ((IDictionary)list).Add(el.Name, elementInstance);
+                                }
+                            }
+                            else
+                            {
+                                foreach (var el in listTag)
+                                {
+                                    var elementInstance = Activator.CreateInstance(elementTypes[0]);
+                                    FillFromTag(elementInstance, (CompoundTag)el);
+                                    ((IList)list).Add(elementInstance);
+                                }
                             }
                         }
                         else
                         {
                             var listConverter = property.GetAttribute<NbtConverterAttribute>();
-                            foreach (var el in listTag)
+                            if (isDict)
                             {
-                                string listValue = element.Stringify(false);
-                                if (listConverter != null)
-                                    list.Add(listConverter.Converter(listValue));
-                                else
-                                    list.Add(_convertMapper[tagType](listValue));
+                                foreach (var el in listTag)
+                                {
+                                    string listValue = el.Stringify(false);
+                                    if (listConverter != null)
+                                        ((IDictionary)list).Add(el.Name, listConverter.Converter(listValue));
+                                    else
+                                        ((IDictionary)list).Add(el.Name, ConvertMapper[el.Type](listValue));
+                                }
+                            }
+                            else
+                            {
+                                foreach (var el in listTag)
+                                {
+                                    string listValue = el.Stringify(false);
+                                    if (listConverter != null)
+                                        ((IList)list).Add(listConverter.Converter(listValue));
+                                    else
+                                        ((IList)list).Add(ConvertMapper[el.Type](listValue));
+                                }
                             }
                         }
                         property.SetValue(obj, list);
@@ -81,25 +121,24 @@ namespace MinetaleConverter.Base
                         if (converter != null)
                             property.SetValue(obj, converter.Converter(value));
                         else
-                            property.SetValue(obj, _convertMapper[tagType](value));
+                            property.SetValue(obj, ConvertMapper[tagType](value));
                         break;
                 }
             }
         }
 
-        private static Dictionary<TagType, Func<string, object?>> _convertMapper = new Dictionary<TagType, Func<string, object?>>()
+        public static Dictionary<TagType, Func<string, object?>> ConvertMapper = new Dictionary<TagType, Func<string, object?>>()
         {
             { TagType.String, (x) => x.Replace("\"", "") },
-            { TagType.Int, (x) => int.Parse(x) },
-            { TagType.Long, (x) => long.Parse(x.ToLower().Replace("l", "")) },
-            { TagType.Float, (x) => float.Parse(x.ToLower().Replace("f", "")) },
-            { TagType.Byte, (x) => byte.Parse(x.ToLower().Replace("b", "")) },
-            { TagType.Double, (x) => double.Parse(x.ToLower().Replace("d", "")) },
-            { TagType.Short, (x) => short.Parse(x) },
-            { TagType.IntArray, (x) => x.Skip(3).SkipLast(1).ToArray((y) => int.Parse(y)) },
-            { TagType.LongArray, (x) => x.Skip(3).SkipLast(1).ToArray((y) => long.Parse(y.ToLower().Replace("l", ""))) },
-            { TagType.ByteArray, (x) => x.Skip(3).SkipLast(1).ToArray((y) => byte.Parse(y.ToLower().Replace("b", ""))) },
-            { TagType.List, (x) => x }
+            { TagType.Int, (x) => int.Parse(x.Replace("\"", "")) },
+            { TagType.Long, (x) => long.Parse(x.Replace("\"", "").ToLower().Replace("l", "")) },
+            { TagType.Float, (x) => float.Parse(x.Replace("\"", "").ToLower().Replace("f", "")) },
+            { TagType.Byte, (x) => byte.Parse(x.Replace("\"", "").ToLower().Replace("b", "")) },
+            { TagType.Double, (x) => double.Parse(x.Replace("\"", "").ToLower().Replace("d", "")) },
+            { TagType.Short, (x) => short.Parse(x.Replace("\"", "")) },
+            { TagType.IntArray, (x) => x.Skip(3).SkipLast(1).ToArray((y) => int.Parse(y.Replace("\"", ""))) },
+            { TagType.LongArray, (x) => x.Skip(3).SkipLast(1).ToArray((y) => long.Parse(y.Replace("\"", "").ToLower().Replace("l", ""))) },
+            { TagType.ByteArray, (x) => x.Skip(3).SkipLast(1).ToArray((y) => byte.Parse(y.Replace("\"", "").ToLower().Replace("b", ""))) }
         };
 
         // Not used but keeping just in case. I don't wanna write this again.

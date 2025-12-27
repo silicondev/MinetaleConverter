@@ -15,5 +15,62 @@ namespace MinetaleConverter.Base
 
         public static T? GetAttribute<T>(this MemberInfo memberInfo) where T : Attribute =>
             (T?)Attribute.GetCustomAttribute(memberInfo, typeof(T));
+
+        public static int SwapEndian(this IEnumerable<byte> arr)
+        {
+            var list = new List<byte>(arr);
+            if (arr.Count() < 4)
+                list.Insert(0, 0);
+            return BitConverter.ToInt32(list.ToArray()).SwapEndian();
+        }
+
+        public static int SwapEndian(this int input)
+        {
+            unchecked
+            {
+                return (int)(((uint)input).SwapEndian());
+            }
+        }
+
+        public static uint SwapEndian(this uint input) =>
+            ((input & 0x000000ff) << 24) +
+            ((input & 0x0000ff00) << 8) +
+            ((input & 0x00ff0000) >> 8) +
+            ((input & 0xff000000) >> 24);
+
+        public static T[] Combine<T>(this IEnumerable<T[]> arr)
+        {
+            var list = new List<T>();
+            foreach (var item in arr)
+                list.AddRange(item);
+            return list.ToArray();
+        }
+
+        public static T[] Combine<T>(this IEnumerable<T>[] arr)
+        {
+            var list = new List<T>();
+            foreach (var item in arr)
+                list.AddRange(item);
+            return list.ToArray();
+        }
+
+        public static (byte, byte) GetNibbles(this byte b)
+        {
+            byte nibble1 = (byte) (b & 0x0F);
+            byte nibble2 = (byte)((b & 0xF0) >> 4);
+            return (nibble1, nibble2);
+        }
+
+        public static T[] GetTupleArray<T>(this (T, T) tuple) => new T[] { tuple.Item1, tuple.Item2 };
+
+        public static bool[] GetBits(this byte b)
+        {
+            var arr = new bool[8];
+            for (int i = 0; i < 8; i++)
+            {
+                arr[i] = (b & (1 << i)) != 0;
+            }
+            return arr;
+        }
     }
 }
