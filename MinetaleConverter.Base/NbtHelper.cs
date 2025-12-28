@@ -35,7 +35,6 @@ namespace MinetaleConverter.Base
                     continue;
 
                 var property = propDict[element.Name];
-                bool isStringProperty = property.PropertyType == typeof(string);
 
                 var tagTypeAttr = property.GetAttribute<NbtTagTypeAttribute>();
                 var tagType = tagTypeAttr?.Type ?? element.Type;
@@ -61,7 +60,6 @@ namespace MinetaleConverter.Base
                         else
                         {
                             Type elementType = elementTypes[0];
-                            bool isString = elementType == typeof(string);
                             Type listType = typeof(List<>).MakeGenericType(new[] { elementType });
                             list = (IList)Activator.CreateInstance(listType);
                         }

@@ -64,7 +64,7 @@ namespace MinetaleConverter.ConsoleApp
                     Console.WriteLine("Invalid input.");
                     continue;
                 }
-                Console.WriteLine(world.GetBlockId(x, y, z));
+                Console.WriteLine(world.GetBiomeId(x, y, z));
             }
         }
     }

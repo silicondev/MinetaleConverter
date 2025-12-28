@@ -1,5 +1,4 @@
 ﻿using MinetaleConverter.Base;
-using MinetaleConverter.Base.Entities;
 using MinetaleConverter.Base.Logging;
 using MinetaleConverter.Compression;
 using SharpNBT;
@@ -21,7 +20,7 @@ namespace MinetaleConverter.Conversion.Minecraft
             _logger = logger;
         }
 
-        public async Task<bool> ImportFile(string path)
+        public async Task<bool> ImportFile(string path, bool useAsync = true)
         {
             try
             {
@@ -44,15 +43,32 @@ namespace MinetaleConverter.Conversion.Minecraft
 
                 _logger.Info($"[{Level.LevelName}] Found {regionFiles.Length} region files.");
 
-                var tasks = regionFiles.Select(x => Task.Factory.StartNew(() => ParseRegion(x, false)));
+                int failed = 0;
+                int success = 0;
+                if (useAsync)
+                {
+                    var tasks = regionFiles.Select(x => Task.Factory.StartNew(() => ParseRegion(x, false)));
 
-                var results = await Task.WhenAll(tasks);
-                int failed = results.Count(x => x.Count() == 0);
-                int success = results.Count(x => x.Count() > 0);
+                    var results = await Task.WhenAll(tasks);
+                    failed = results.Count(x => x.Count() == 0);
+                    success = results.Count(x => x.Count() > 0);
 
+                    Chunks.AddRange(results.Combine());
+                }
+                else
+                {
+                    foreach (var regionFile in regionFiles)
+                    {
+                        var chunks = ParseRegion(regionFile);
+                        if (chunks.Count() > 0)
+                            success++;
+                        else
+                            failed++;
+                        Chunks.AddRange(chunks);
+                    }
+                }
                 _logger.Info($"[{Level.LevelName}] {success} Region files processed. {failed} failed to process.");
 
-                Chunks.AddRange(results.Combine());
                 return success > 0;
             }
             catch (Exception e)
@@ -167,7 +183,7 @@ namespace MinetaleConverter.Conversion.Minecraft
 
                     if (tag == null)
                     {
-                        if (log) _logger.Error($"[{fileName}] Chunk#{offset} Could not read NBT tag.");
+                        if (log) _logger.Warn($"[{fileName}] Chunk#{offset} Could not read NBT tag.");
                         errorChunks++;
                         continue;
                     }
@@ -192,8 +208,8 @@ namespace MinetaleConverter.Conversion.Minecraft
 
         public string GetBlockId(int x, int y, int z)
         {
-            int xChunkPos = (int)(x / 16d);
-            int zChunkPos = (int)(z / 16d);
+            int xChunkPos = (int)Math.Floor(x / 16d);
+            int zChunkPos = (int)Math.Floor(z / 16d);
 
             var chunk = GetChunk(xChunkPos, zChunkPos);
             if (chunk == null)
@@ -201,6 +217,19 @@ namespace MinetaleConverter.Conversion.Minecraft
 
             var palette = chunk.GetBlock(x - (xChunkPos * 16), y, z - (zChunkPos * 16));
             return palette?.Name ?? "minecraft:air";
+        }
+
+        public string GetBiomeId(int x, int y, int z)
+        {
+            int xChunkPos = (int)Math.Floor(x / 16d);
+            int zChunkPos = (int)Math.Floor(z / 16d);
+
+            var chunk = GetChunk(xChunkPos, zChunkPos);
+            if (chunk == null)
+                return "";
+
+            var palette = chunk.GetBiome(x - (xChunkPos * 16), y, z - (zChunkPos * 16));
+            return palette?.Name ?? "minecraft:error";
         }
 
         public Chunk? GetChunk(int x, int z) =>

@@ -38,5 +38,16 @@ namespace MinetaleConverter.Conversion.Minecraft
 
             return section.GetBlock(x, y - (sectionId * 16), z);
         }
+
+        public Palette? GetBiome(int x, int y, int z)
+        {
+            int sectionId = (int)(y / 16d);
+
+            var section = Sections.FirstOrDefault(x => x.Y == sectionId);
+            if (section == null)
+                return null;
+
+            return section.GetBiome(x, y - (sectionId * 16), z);
+        }
     }
 }
