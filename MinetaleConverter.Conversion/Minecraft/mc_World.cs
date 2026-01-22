@@ -1,24 +1,29 @@
 ﻿using MinetaleConverter.Base;
 using MinetaleConverter.Base.Logging;
-using MinetaleConverter.Compression;
+using MinetaleConverter.Compression.ZLib;
+using MinetaleConverter.Conversion.Interfaces;
+using MinetaleConverter.Conversion.Minecraft.WorldEntities;
 using SharpNBT;
 using System.IO;
 
 namespace MinetaleConverter.Conversion.Minecraft
 {
-    public class MinecraftWorld
+    public class mc_World : IWorld
     {
         private ILogger _logger;
 
-        public Level Level { get; private set; } = new Level();
+        public mc_Level Level { get; private set; } = new mc_Level();
         public List<byte[]> bChunkDataNBT { get; private set; } = new List<byte[]>();
-        public List<Chunk> Chunks { get; private set; } = new List<Chunk>();
-        public List<Chunk> FullChunks => Chunks.Where(x => x.Status == "minecraft:full").ToList();
+        public List<IChunk> Chunks { get; private set; } = new List<IChunk>();
+        public List<mc_Chunk> FullChunks => Chunks.Cast<mc_Chunk>().Where(x => x.Status == "minecraft:full").ToList();
 
-        public MinecraftWorld(ILogger logger)
+        public mc_World(ILogger logger)
         {
             _logger = logger;
         }
+
+        public int HeightLevel => 320;
+        public int BedrockLevel => -64;
 
         public async Task<bool> ImportFile(string path, bool useAsync = true)
         {
@@ -78,9 +83,9 @@ namespace MinetaleConverter.Conversion.Minecraft
             }
         }
 
-        public List<Chunk> ParseRegion(string regionPath, bool log = true)
+        public List<mc_Chunk> ParseRegion(string regionPath, bool log = true)
         {
-            var chunks = new List<Chunk>();
+            var chunks = new List<mc_Chunk>();
 
             // Sanity check and setup
 
@@ -157,7 +162,18 @@ namespace MinetaleConverter.Conversion.Minecraft
                     byte compType = byteChunks[offset][4];
                     // Skipping 2 bytes for the data (5 > 7) so it... works?
                     byte[] compressedData = byteChunks[offset..(offset + len)].Combine()[7..];
-                    bool decompSuccess = ZipHelper.Decompress(compressedData, out byte[]? decompChunk, (CompressionMethod)compType);
+                    var method = (CompressionMethod)compType;
+                    bool decompSuccess = false;
+                    byte[]? decompChunk = null;
+                    switch (method)
+                    {
+                        case CompressionMethod.ZLIB:
+                            decompSuccess = ZLibHelper.Decompress(compressedData, out decompChunk);
+                            break;
+                        default:
+                            _logger.Error($"[{fileName}] Chunk#{offset} Unrecognised compression method: {compType}.");
+                            continue;
+                    }
                     if (!decompSuccess || decompChunk == null)
                     {
                         if (log) _logger.Error($"[{fileName}] Chunk#{offset} Decompression failed.");
@@ -190,7 +206,7 @@ namespace MinetaleConverter.Conversion.Minecraft
 
                     // Fill chunk tag into data structure
 
-                    var chunk = new Chunk();
+                    var chunk = new mc_Chunk();
                     NbtHelper.FillFromTag(chunk, tag);
                     chunk.NbtData = decompChunk;
                     chunks.Add(chunk);
@@ -202,7 +218,7 @@ namespace MinetaleConverter.Conversion.Minecraft
             catch (Exception e)
             {
                 _logger.Critical($"[{fileName}] >FAIL< Error parsing region file.", e);
-                return new List<Chunk>();
+                return new List<mc_Chunk>();
             }
         }
 
@@ -215,8 +231,7 @@ namespace MinetaleConverter.Conversion.Minecraft
             if (chunk == null)
                 return "";
 
-            var palette = chunk.GetBlock(x - (xChunkPos * 16), y, z - (zChunkPos * 16));
-            return palette?.Name ?? "minecraft:air";
+            return chunk.GetBlock(x - (xChunkPos * 16), y, z - (zChunkPos * 16));
         }
 
         public string GetBiomeId(int x, int y, int z)
@@ -228,11 +243,10 @@ namespace MinetaleConverter.Conversion.Minecraft
             if (chunk == null)
                 return "";
 
-            var palette = chunk.GetBiome(x - (xChunkPos * 16), y, z - (zChunkPos * 16));
-            return palette?.Name ?? "minecraft:error";
+            return chunk.GetBiome(x - (xChunkPos * 16), y, z - (zChunkPos * 16));
         }
 
-        public Chunk? GetChunk(int x, int z) =>
+        public mc_Chunk? GetChunk(int x, int z) =>
             FullChunks.FirstOrDefault(c => c.xPos == x && c.zPos == z);
     }
 }

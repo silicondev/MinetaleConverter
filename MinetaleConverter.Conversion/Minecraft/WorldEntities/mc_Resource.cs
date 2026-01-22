@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MinetaleConverter.Conversion.Minecraft
+namespace MinetaleConverter.Conversion.Minecraft.WorldEntities
 {
-    public class Palette
+    public class mc_Resource
     {
         public string Name { get; internal set; }
         public Dictionary<string, string> Properties { get; internal set; } = new Dictionary<string, string>();

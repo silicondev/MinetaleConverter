@@ -5,9 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MinetaleConverter.Conversion.Minecraft
+namespace MinetaleConverter.Conversion.Minecraft.WorldEntities
 {
-    public class TileTick
+    public class mc_TileTick
     {
         [NbtProperty("i")]
         public string Id { get; internal set; }

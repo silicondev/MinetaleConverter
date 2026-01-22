@@ -6,9 +6,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MinetaleConverter.Conversion.Minecraft
+namespace MinetaleConverter.Conversion.Minecraft.LevelEntities
 {
-    public class Version
+    public class mc_Version
     {
         public int Id { get; internal set; }
         public string Name { get; internal set; }

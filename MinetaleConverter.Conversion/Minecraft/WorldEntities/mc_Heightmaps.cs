@@ -5,9 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MinetaleConverter.Conversion.Minecraft
+namespace MinetaleConverter.Conversion.Minecraft.WorldEntities
 {
-    public class Heightmaps
+    public class mc_Heightmaps
     {
         public long[] MOTION_BLOCKING { get; internal set; }
         public long[] MOTION_BLOCKING_NO_LEAVES { get; internal set; }

@@ -8,6 +8,11 @@
 
   <ItemGroup>
     <PackageReference Include="SharpNBT" Version="1.3.1" />
+    <PackageReference Include="ZstdSharp.Port" Version="0.8.7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MinetaleConverter.Base\MinetaleConverter.Base.csproj" />
   </ItemGroup>
 
 </Project>

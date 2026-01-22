@@ -1,8 +1,16 @@
 {
   "profiles": {
-    "MinetaleConverter.ConsoleApp": {
+    "WSL": {
+      "commandName": "WSL2",
+      "distributionName": ""
+    },
+    "MinecraftRead": {
       "commandName": "Project",
-      "commandLineArgs": "TestWorld TestChunks"
+      "commandLineArgs": "--mode analyze --minecraft Minecraft_TestWorld --output Minecraft_TestChunks"
+    },
+    "HytaleRead": {
+      "commandName": "Project",
+      "commandLineArgs": "--mode analyze --hytale Hytale_TestWorld --output Hytale_TestChunks"
     }
   }
 }

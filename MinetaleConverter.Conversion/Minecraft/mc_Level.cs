@@ -1,5 +1,6 @@
 ﻿using MinetaleConverter.Base.Attributes;
 using MinetaleConverter.Base.Converters;
+using MinetaleConverter.Conversion.Minecraft.LevelEntities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace MinetaleConverter.Conversion.Minecraft
 {
-    public class Level
+    public class mc_Level
     {
         [NbtProperty("allowCommands")]
         [NbtConverter(typeof(ByteToBool))]
@@ -24,7 +25,7 @@ namespace MinetaleConverter.Conversion.Minecraft
         public double BorderWarningTime { get; internal set; } = 15d;
         [NbtProperty("clearWeatherTime")]
         public int ClearWeatherTime { get; internal set; }
-        public DataPacks DataPacks { get; internal set; } = new DataPacks();
+        public mc_DataPacks DataPacks { get; internal set; } = new mc_DataPacks();
         public int DataVersion { get; internal set; }
         public long DayTime { get; internal set; }
         public byte Difficulty { get; internal set; }
@@ -44,6 +45,7 @@ namespace MinetaleConverter.Conversion.Minecraft
         public string LevelName { get; internal set; }
         [NbtConverter(typeof(ByteToBool))]
         public bool MapFeatures { get; internal set; } = true;
+        public mc_Player Player { get; internal set; } = new mc_Player();
         [NbtProperty("raining")]
         [NbtConverter(typeof(ByteToBool))]
         public bool Raining { get; internal set; }

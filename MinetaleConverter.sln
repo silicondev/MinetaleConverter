@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MinetaleConverter.Compressi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MinetaleConverter.Base", "MinetaleConverter.Base\MinetaleConverter.Base.csproj", "{A8B5D0CD-7BFD-51ED-1601-DD9AB282091E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DONOTKEEP", "DONOTKEEP\DONOTKEEP.csproj", "{6ABF5198-C504-4B7B-B8B2-EC7F0A222910}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{A8B5D0CD-7BFD-51ED-1601-DD9AB282091E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A8B5D0CD-7BFD-51ED-1601-DD9AB282091E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A8B5D0CD-7BFD-51ED-1601-DD9AB282091E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6ABF5198-C504-4B7B-B8B2-EC7F0A222910}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6ABF5198-C504-4B7B-B8B2-EC7F0A222910}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6ABF5198-C504-4B7B-B8B2-EC7F0A222910}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6ABF5198-C504-4B7B-B8B2-EC7F0A222910}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

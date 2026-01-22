@@ -72,5 +72,44 @@ namespace MinetaleConverter.Base
             }
             return arr;
         }
+
+        public static int ToInt(this bool[] arr)
+        {
+            int len = arr.Length;
+            if (len > 32)
+                len = 32;
+            int result = 0;
+            for (int i = 0; i < len; i++)
+                result |= arr[i] ? 1 << i : 0;
+            return result;
+        }
+
+        public static Dictionary<int, T> ToNumberedDictionary<T>(this IEnumerable<T> list)
+        {
+            var dict = new Dictionary<int, T>();
+            for (int i = 0; i < list.Count(); i++)
+                dict.Add(i, list.ElementAt(i));
+            return dict;
+        }
+
+        public static int FindNextIndex<T>(this IEnumerable<T> arr, Func<T, bool> predicate, int startIndex = 0)
+        {
+            for (int i = startIndex; i < arr.Count(); i++)
+            {
+                if (predicate(arr.ElementAt(i)))
+                    return i;
+            }
+            return -1;
+        }
+
+        public static string ToCharString(this int num, char c)
+        {
+            string str = "";
+            for (int i = 0; i < num; i++)
+                str += c;
+            return str;
+        }
+
+        public static string ToArrayString<T>(this IEnumerable<T> arr) => string.Join(", ", arr);
     }
 }
