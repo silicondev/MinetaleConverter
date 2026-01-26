@@ -1,5 +1,5 @@
-﻿using MinetaleConverter.Base.Bson;
-using MinetaleConverter.Base.Interfaces;
+﻿using MinetaleConverter.Base.Converters;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,16 +8,10 @@ using System.Threading.Tasks;
 
 namespace MinetaleConverter.Conversion.Hytale.WorldEntities
 {
-    public class hy_Binary : IBsonImporter
+    public class hy_Binary
     {
-        public int Version { get; internal set; } = -1;
-        public byte[] Data { get; internal set; }
-
-        public void ImportBson(BsonFile file)
-        {
-            if (file.Data.ContainsKey("Version"))
-                Version = file.Get<int>("Version");
-            Data = file.Get<byte[]>("Data");
-        }
+        public int Version { get; set; }
+        [JsonProperty(ItemConverterType = typeof(StringToByteArray))]
+        public byte[] Data { get; set; } = new byte[0];
     }
 }

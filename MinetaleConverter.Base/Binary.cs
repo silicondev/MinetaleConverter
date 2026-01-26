@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -39,13 +40,18 @@ namespace MinetaleConverter.Base
         public static Dictionary<Type, (int len, Func<byte[], object> parser)> Matrix = new Dictionary<Type, (int, Func<byte[], object>)>()
         {
             { typeof(int), (4, (x) => BitConverter.ToInt32(x)) },
+            { typeof(uint), (4, (x) => BitConverter.ToUInt32(x)) },
             { typeof(byte), (1, (x) => x[0]) },
             { typeof(string), (-1, (x) => Encoding.ASCII.GetString(x)) },
             { typeof(double), (8, (x) => BitConverter.ToDouble(x)) },
             { typeof(bool), (1, (x) => BitConverter.ToBoolean(x)) },
             { typeof(long), (8, (x) => BitConverter.ToInt64(x)) },
-            { typeof(DateTime), (8, (x) => new DateTime(BitConverter.ToInt64(x))) }
+            { typeof(DateTime), (8, (x) => new DateTime(BitConverter.ToInt64(x))) },
+            { typeof(short), (2, (x) => BitConverter.ToInt16(x)) },
+            { typeof(ushort), (2, (x) => BitConverter.ToUInt16(x)) }
         };
+
+        public int Length => Bytes.Length;
 
         public Binary(byte[] arr)
         {
@@ -76,9 +82,15 @@ namespace MinetaleConverter.Base
             if (index >= 0)
                 Seek = index;
             (int len, Func<byte[], object> parser) = Matrix[t];
-            byte[] b = Subset(Seek, len);
-            Seek += len;
-            return parser(b);
+            if (len < 0)
+                //return ReadUntilNull(t, index, seek);
+                return ReadGivenLength(t, typeof(uint), (x) => ((uint)x) - 1);
+            else
+            {
+                byte[] b = Subset(Seek, len);
+                Seek += len;
+                return parser(b);
+            }
         }
 
         public T ReadLength<T>(int len, int index = -1, bool seek = true) => (T)Convert.ChangeType(ReadLength(typeof(T), len, index, seek), typeof(T));
@@ -108,6 +120,42 @@ namespace MinetaleConverter.Base
             return parser(b);
         }
 
+        public T ReadGivenLength<T, TData>(Func<TData, TData>? transform = null, int index = -1, bool seek = true) => (T)Convert.ChangeType(ReadGivenLength(typeof(T), typeof(TData), transform != null ? (x) => transform((TData)x) : null, index, seek), typeof(T));
+
+        //public object ReadGivenLength(Type t, Type lenDataType, bool swapLengthEndian = false, int index = -1, bool seek = true)
+        //{
+        //    if (index >= 0)
+        //        Seek = index;
+        //    index = Seek;
+        //    (_, Func<byte[], object> parser) = Matrix[t];
+        //    string lenStr = Read(lenDataType).ToString();
+        //    int len = int.Parse(lenStr);
+        //    if (swapLengthEndian)
+        //        len = len.SwapEndian();
+        //    object result = ReadLength(t, len);
+        //    if (!seek)
+        //        Seek = index;
+        //    return result;
+        //}
+
+        public object ReadGivenLength(Type t, Type lenType, Func<object, object>? transform = null, int index = -1, bool seek = true)
+        {
+            if (index >= 0)
+                Seek = index;
+            index = Seek;
+            (_, Func<byte[], object> parser) = Matrix[t];
+            object tLen = Read(lenType);
+            if (transform != null)
+                tLen = transform(tLen);
+            string lenStr = tLen.ToString();
+            int len = int.Parse(lenStr);
+            object result = ReadLength(t, len);
+            if (!seek)
+                Seek = index;
+            return result;
+        }
+
+
         public void Cut(int index = -1, int count = -1)
         {
             if (index == -1)
@@ -115,6 +163,7 @@ namespace MinetaleConverter.Base
             if (count == -1)
                 count = Bytes.Length - index;
             Bytes = Bytes[index..(index + count)];
+            Seek -= index;
         }
     }
 }

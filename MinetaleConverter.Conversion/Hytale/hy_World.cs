@@ -1,18 +1,21 @@
 ﻿using ICSharpCode.SharpZipLib;
 using ICSharpCode.SharpZipLib.Zip.Compression;
 using MinetaleConverter.Base;
+using MinetaleConverter.Base.Compression.Zstd;
 using MinetaleConverter.Base.Logging;
-using MinetaleConverter.Base.Blob;
-using MinetaleConverter.Base.Bson;
 using MinetaleConverter.Conversion.Hytale.WorldEntities;
-using SharpNBT;
+using MinetaleConverter.Conversion.Interfaces;
+using MinetaleConverter.Conversion.Minecraft.WorldEntities;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Bson;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
-using MinetaleConverter.Conversion.Interfaces;
 
 namespace MinetaleConverter.Conversion.Hytale
 {
@@ -20,6 +23,7 @@ namespace MinetaleConverter.Conversion.Hytale
     {
         private ILogger _logger;
         public List<IChunk> Chunks { get; private set; } = new List<IChunk>();
+        public List<string> ChunkBsonFiles { get; private set; } = new List<string>();
 
         public hy_World(ILogger logger)
         {
@@ -84,45 +88,117 @@ namespace MinetaleConverter.Conversion.Hytale
 
         public List<hy_Chunk> ParseRegion(string regionPath, bool log = true)
         {
-            string[] fileNameParts = Path.GetFileName(regionPath).Split('.');
-            int regionX = int.Parse(fileNameParts[0]);
-            int regionY = int.Parse(fileNameParts[1]);
-            var file = new IndexedStorageFile("HytaleIndexedStorage");
-            file.Import(File.ReadAllBytes(regionPath));
             var chunks = new List<hy_Chunk>();
 
-            foreach (var index in file.BlobIndexes)
+            string fileName = Path.GetFileName(regionPath);
+            string[] fileNameParts = fileName.Split('.');
+            int regionX = int.Parse(fileNameParts[0]);
+            int regionZ = int.Parse(fileNameParts[1]);
+
+            Binary bin = new Binary(File.ReadAllBytes(regionPath));
+            string magic = bin.ReadLength<string>(20);
+            if (magic != "HytaleIndexedStorage")
+            {
+                _logger.Error($"[{fileName}] >FAIL< Region file does not start with correct magic text.");
+                return chunks;
+            }
+            int version = bin.Read<int>().SwapEndian();
+            if (version < 0 || version > 1)
+            {
+                _logger.Error($"[{fileName}] >FAIL< Region file is not a supported verion. (Found {version}. Should be 0 or 1)");
+                return chunks;
+            }
+            int blobCount = bin.Read<int>().SwapEndian();
+            int segmentSize = bin.Read<int>().SwapEndian();
+            var blobIndexes = new List<int>();
+            //for (int i = 0; i < blobCount; i++)
+            //{
+            //    int index = indexesBin.Read<int>().SwapEndian();
+            //    if (index != 0)
+            //        blobIndexes.Add(index);
+            //}
+
+            for (int i = 0; i < blobCount; i++)
+                blobIndexes.Add(bin.Read<int>().SwapEndian());
+
+            int errorChunks = 0;
+
+            for (int i = 0; i < blobCount; i++)
             {
                 try
                 {
-                    (int chunkX, int chunkY) = getChunkCoordinates(index, regionX, regionY);
-                    byte[] chunkData = file.ReadBlob(index);
-                    var bsonFile = new BsonFile(chunkData);
-                    chunks.Add(new hy_Chunk(bsonFile));
+                    int firstSegmentIndex = blobIndexes[i];
+                    if (firstSegmentIndex == 0)
+                        continue;
+
+                    bin.Seek = ((firstSegmentIndex - 1) * segmentSize) + 32 + (blobCount * 4);
+
+                    int srcLength = bin.Read<int>().SwapEndian();
+                    int compLength = bin.Read<int>().SwapEndian();
+                    byte[] compressedData = bin.Subset(compLength);
+                    if (compressedData.Length != compLength)
+                    {
+                        _logger.Warn($"[{fileName}] Chunk#{i} Compressed data out of bounds of file.");
+                        errorChunks++;
+                        continue;
+                    }
+                    byte[] bsonData = ZstdHelper.Decompress(compressedData, srcLength);
+                    (int chunkX, int chunkZ) = getChunkCoordinates(i, regionX, regionZ);
+
+                    hy_Chunk? chunk = null;
+                    using (var memStream = new MemoryStream(bsonData))
+                    using (var reader = new BsonDataReader(memStream))
+                    {
+                        var serializer = new JsonSerializer();
+                        chunk = serializer.Deserialize<hy_Chunk>(reader);
+                        string json = JsonConvert.SerializeObject(chunk, Formatting.Indented);
+                        ChunkBsonFiles.Add(json);
+                    }
+                    if (chunk != null)
+                    {
+                        chunk.Populate(chunkX, chunkZ);
+                        chunks.Add(chunk);
+                    }
                 }
-                catch (Exception e) { }
+                catch (Exception e)
+                {
+                    _logger.Error($"[{fileName}] Chunk#{i} failed to parse: {e.Message}");
+                    errorChunks++;
+                }
             }
+
+            _logger.Info($"[{fileName}] >SUCCESS< Found {chunks.Count()} successful chunks." + (errorChunks > 0 ? $" (and {errorChunks} failed one(s).)" : ""));
 
             return chunks;
         }
 
-        private (int chunkX, int chunkY) getChunkCoordinates(int blobIndex, int regionX, int regionY)
+        private (int chunkX, int chunkZ) getChunkCoordinates(int blobIndex, int regionX, int regionZ)
         {
             int localX = blobIndex % 32;
-            int localY = blobIndex / 32;
+            int localZ = blobIndex / 32;
             int chunkX = regionX << 5 | localX;
-            int chunkY = regionY << 5 | localY;
-            return (chunkX, chunkY);
+            int chunkZ = regionZ << 5 | localZ;
+            return (chunkX, chunkZ);
         }
 
         public string GetBlockId(int x, int y, int z)
         {
-            throw new NotImplementedException();
+            int xChunkPos = (int)Math.Floor(x / 32d);
+            int zChunkPos = (int)Math.Floor(z / 32d);
+
+            var chunk = GetChunk(xChunkPos, zChunkPos);
+            if (chunk == null)
+                return "";
+
+            return chunk.GetBlock(x - (xChunkPos * 32), y, z - (zChunkPos * 32));
         }
 
         public string GetBiomeId(int x, int y, int z)
         {
             throw new NotImplementedException();
         }
+
+        public IChunk? GetChunk(int x, int z) =>
+            Chunks.FirstOrDefault(c => c.xPos == x && c.zPos == z);
     }
 }

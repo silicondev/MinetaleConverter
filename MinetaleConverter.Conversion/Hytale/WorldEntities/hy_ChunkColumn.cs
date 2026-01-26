@@ -1,5 +1,6 @@
-﻿using MinetaleConverter.Base.Bson;
-using MinetaleConverter.Base.Interfaces;
+﻿using MinetaleConverter.Conversion.Hytale.Converters;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,21 +9,19 @@ using System.Threading.Tasks;
 
 namespace MinetaleConverter.Conversion.Hytale.WorldEntities
 {
-    public class hy_ChunkColumn : IBsonImporter
+    public class hy_ChunkColumn
     {
-        public hy_Section[] Sections { get; internal set; }
-
-        public void ImportBson(BsonFile file)
+        public IList<hy_Section> Sections
         {
-            var files = file.Get<object[]>("Sections");
-            var list = new List<hy_Section>();
-            foreach (var f in files.Select(x => (BsonFile)((((BsonType type, object fileObj))x).fileObj)))
-            {
-                var section = new hy_Section();
-                section.ImportBson(f.Get<BsonFile>("Components"));
-                list.Add(section);
-            }
-            Sections = list.ToArray();
+            get => _sections;
+            set => SetSections(value);
+        }
+        private IList<hy_Section> _sections = new List<hy_Section>();
+        private void SetSections(IList<hy_Section> list)
+        {
+            _sections = list;
+            for (int i = 0; i < _sections.Count; i++)
+                _sections[i].Id = i;
         }
     }
 }

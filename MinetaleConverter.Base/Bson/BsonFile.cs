@@ -43,14 +43,14 @@ namespace MinetaleConverter.Base.Bson
                 switch (type)
                 {
                     case BsonType.DOCUMENT:
-                        var newDict = (Dictionary<string, (BsonType type, object data)>)val;
+                        var newDict = ((BsonFile)val).Data;
                         str += $"{Environment.NewLine}{(tab + 1).ToCharString(' ')}\\_{Environment.NewLine}";
                         str += ToString(newDict, tab + 4);
                         break;
                     case BsonType.OBJECT_ID:
                     case BsonType.BINARY:
                         byte[] bytes = (byte[])val;
-                        str += BitConverter.ToString(bytes) + Environment.NewLine;
+                        str += Encoding.ASCII.GetString(bytes) + Environment.NewLine;
                         break;
                     case BsonType.ARRAY:
                         object[] objects = (object[])val;

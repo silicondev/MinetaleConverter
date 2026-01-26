@@ -24,6 +24,14 @@ namespace MinetaleConverter.Base
             return BitConverter.ToInt32(list.ToArray()).SwapEndian();
         }
 
+        public static short SwapEndian(this short input)
+        {
+            unchecked
+            {
+                return (short)(((ushort)input).SwapEndian());
+            }
+        }
+
         public static int SwapEndian(this int input)
         {
             unchecked
@@ -32,11 +40,33 @@ namespace MinetaleConverter.Base
             }
         }
 
+        public static long SwapEndian(this long input)
+        {
+            unchecked
+            {
+                return (long)(((ulong)input).SwapEndian());
+            }
+        }
+
+        public static ushort SwapEndian(this ushort input) =>
+            (ushort)(((input & 0x00ff) << 8) +
+                     ((input & 0xff00) >> 8));
+
         public static uint SwapEndian(this uint input) =>
             ((input & 0x000000ff) << 24) +
             ((input & 0x0000ff00) << 8) +
             ((input & 0x00ff0000) >> 8) +
             ((input & 0xff000000) >> 24);
+
+        public static ulong SwapEndian(this ulong input) =>
+            ((input & 0x00000000000000ff) << 56) +
+            ((input & 0x000000000000ff00) << 40) +
+            ((input & 0x0000000000ff0000) << 24) +
+            ((input & 0x00000000ff000000) << 8) +
+            ((input & 0x000000ff00000000) >> 8) +
+            ((input & 0x0000ff0000000000) >> 24) +
+            ((input & 0x00ff000000000000) >> 40) +
+            ((input & 0xff00000000000000) >> 56);
 
         public static T[] Combine<T>(this IEnumerable<T[]> arr)
         {

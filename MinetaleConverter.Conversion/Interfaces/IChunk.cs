@@ -8,6 +8,8 @@ namespace MinetaleConverter.Conversion.Interfaces
 {
     public interface IChunk
     {
+        int xPos { get; }
+        int zPos { get; }
         string GetBlock(int x, int y, int z);
         string GetBiome(int x, int y, int z);
     }

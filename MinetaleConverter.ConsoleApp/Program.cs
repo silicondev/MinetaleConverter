@@ -1,10 +1,11 @@
 ﻿using MinetaleConverter.Compression;
 using System;
 using MinetaleConverter.Conversion.Minecraft;
-using MinetaleConverter.Compression.Palette;
 using MinetaleConverter.Conversion.Minecraft.WorldEntities;
 using MinetaleConverter.Conversion.Hytale;
 using MinetaleConverter.Conversion.Interfaces;
+using MinetaleConverter.Base.Compression.Palette;
+using MinetaleConverter.Conversion.Hytale.WorldEntities;
 
 namespace MinetaleConverter.ConsoleApp
 {
@@ -48,7 +49,10 @@ namespace MinetaleConverter.ConsoleApp
                         if (Directory.GetFiles(outputPath).Length > 0)
                         {
                             if (DEBUGMODE)
+                            {
                                 Directory.Delete(outputPath, true);
+                                Directory.CreateDirectory(outputPath);
+                            }
                             else
                                 throw new Exception("Output folder exists and has data!");
                         }
@@ -87,6 +91,22 @@ namespace MinetaleConverter.ConsoleApp
                                     {
                                         fs.WriteByte(b);
                                     }
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        var bson = ((hy_World)world).ChunkBsonFiles;
+                        for (int i = 0; i < bson.Count; i++)
+                        {
+                            var chunk = bson[i];
+                            if (chunk != null)
+                            {
+                                using (var fs = new FileStream(@$"{outputPath}\chunk-{i}.bson", FileMode.CreateNew))
+                                using (var writer = new StreamWriter(fs))
+                                {
+                                    writer.WriteLine(chunk);
                                 }
                             }
                         }
@@ -151,13 +171,34 @@ namespace MinetaleConverter.ConsoleApp
                                         foreach (var section in sections)
                                         {
                                             var rp = section.BlockStates;
-                                            var indices = PaletteHelper.GetIndices(rp.Palettes, rp.Data, (x) => x.Name == blockId, 4);
+                                            var indices = PaletteHelper.GetIndices(rp, (x) => x.Name == blockId, 4);
                                             foreach (var index in indices)
                                             {
                                                 (int x, int y, int z) = mc_Section.GetBlockCoordsFromIndex(index);
                                                 int rx = (chunk.xPos * 16) + x;
                                                 int rz = (chunk.zPos * 16) + z;
                                                 int ry = (section.Y * 16) + y;
+                                                Console.WriteLine($"[{rx},{ry},{rz}]");
+                                            }
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    var chunks = ((hy_World)world).Chunks.Cast<hy_Chunk>().Where(x => x.Components.ChunkColumn.Sections.Any(y => y.Components.BlockPalette.Palettes.Any(z => z == blockId)));
+                                    foreach (var chunk in chunks)
+                                    {
+                                        var sections = chunk.Components.ChunkColumn.Sections.Where(x => x.Components.BlockPalette.Palettes.Any(y => y == blockId));
+                                        foreach (var section in sections)
+                                        {
+                                            var rp = section.Components.BlockPalette;
+                                            var indices = PaletteHelper.GetIndices(rp, (x) => x == blockId, 4);
+                                            foreach (var index in indices)
+                                            {
+                                                (int x, int y, int z) = mc_Section.GetBlockCoordsFromIndex(index);
+                                                int rx = (chunk.xPos * 32) + x;
+                                                int rz = (chunk.zPos * 32) + z;
+                                                int ry = (section.Id * 32) + y;
                                                 Console.WriteLine($"[{rx},{ry},{rz}]");
                                             }
                                         }

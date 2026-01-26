@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 
 namespace MinetaleConverter.Conversion.Hytale.WorldEntities
 {
-    public class hy_FarmingBlock
+    public class hy_ChunkComponents
     {
-        public double SpreadRate { get; internal set; }
+        public hy_ChunkColumn ChunkColumn { get; set; }
     }
 }
