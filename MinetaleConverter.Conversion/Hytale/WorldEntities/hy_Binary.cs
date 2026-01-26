@@ -10,7 +10,7 @@ namespace MinetaleConverter.Conversion.Hytale.WorldEntities
 {
     public class hy_Binary
     {
-        public int Version { get; set; }
+        public int? Version { get; set; }
         [JsonProperty(ItemConverterType = typeof(StringToByteArray))]
         public byte[] Data { get; set; } = new byte[0];
     }

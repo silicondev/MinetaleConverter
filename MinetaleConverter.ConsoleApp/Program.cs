@@ -44,22 +44,6 @@ namespace MinetaleConverter.ConsoleApp
 
                     string outputPath = commandDict["output"];
 
-                    if (Directory.Exists(outputPath))
-                    {
-                        if (Directory.GetFiles(outputPath).Length > 0)
-                        {
-                            if (DEBUGMODE)
-                            {
-                                Directory.Delete(outputPath, true);
-                                Directory.CreateDirectory(outputPath);
-                            }
-                            else
-                                throw new Exception("Output folder exists and has data!");
-                        }
-                    }
-                    else
-                        Directory.CreateDirectory(outputPath);
-
                     string worldPath;
                     IWorld world;
                     if (commandDict.ContainsKey("minecraft"))
@@ -76,6 +60,22 @@ namespace MinetaleConverter.ConsoleApp
                         throw new ArgumentException("Analyze requires either a Minecraft or Hytale world path");
 
                     bool success = await world.ImportFile(worldPath, !DEBUGMODE);
+
+                    if (Directory.Exists(outputPath))
+                    {
+                        if (Directory.GetFiles(outputPath).Length > 0)
+                        {
+                            if (DEBUGMODE)
+                            {
+                                Directory.Delete(outputPath, true);
+                                Directory.CreateDirectory(outputPath);
+                            }
+                            else
+                                throw new Exception("Output folder exists and has data!");
+                        }
+                    }
+                    else
+                        Directory.CreateDirectory(outputPath);
 
                     if (world is mc_World)
                     {

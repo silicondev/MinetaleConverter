@@ -1,0 +1,13 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace MinetaleConverter.Conversion.Hytale.WorldEntities
+{
+    public class hy_BlockComponents
+    {
+        public hy_FarmingBlock FarmingBlock { get; set; }
+    }
+}

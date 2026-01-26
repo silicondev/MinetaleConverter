@@ -14,6 +14,9 @@ namespace MinetaleConverter.Conversion.Hytale.WorldEntities
         {
             set
             {
+                if (value.Version != null)
+                    Version = value.Version.Value;
+
                 var bytes = value.Data;
                 char[] chars = bytes.Select(x => Encoding.ASCII.GetString([x])[0]).ToArray();
                 var bin = new Binary(bytes);
@@ -59,6 +62,8 @@ namespace MinetaleConverter.Conversion.Hytale.WorldEntities
                 var list = BlockPalette.Decompress(blockCount);
             }
         }
+
+        public int Version { get; set; }
         public BytePalette<string> BlockPalette { get; set; } = new BytePalette<string>();
     }
 }

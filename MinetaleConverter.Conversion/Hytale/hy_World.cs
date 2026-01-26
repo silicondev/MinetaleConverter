@@ -145,14 +145,21 @@ namespace MinetaleConverter.Conversion.Hytale
                     byte[] bsonData = ZstdHelper.Decompress(compressedData, srcLength);
                     (int chunkX, int chunkZ) = getChunkCoordinates(i, regionX, regionZ);
 
+                    using (var memStream = new MemoryStream(bsonData))
+                    using (var reader = new BsonDataReader(memStream))
+                    {
+                        var serializer = new JsonSerializer();
+                        var obj = serializer.Deserialize(reader);
+                        string json = JsonConvert.SerializeObject(obj, Formatting.Indented);
+                        ChunkBsonFiles.Add(json);
+                    }
+
                     hy_Chunk? chunk = null;
                     using (var memStream = new MemoryStream(bsonData))
                     using (var reader = new BsonDataReader(memStream))
                     {
                         var serializer = new JsonSerializer();
                         chunk = serializer.Deserialize<hy_Chunk>(reader);
-                        string json = JsonConvert.SerializeObject(chunk, Formatting.Indented);
-                        ChunkBsonFiles.Add(json);
                     }
                     if (chunk != null)
                     {
