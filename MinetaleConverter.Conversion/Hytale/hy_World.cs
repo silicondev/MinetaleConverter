@@ -1,6 +1,7 @@
 ﻿using ICSharpCode.SharpZipLib;
 using ICSharpCode.SharpZipLib.Zip.Compression;
 using MinetaleConverter.Base;
+using MinetaleConverter.Base.Compression.Palette;
 using MinetaleConverter.Base.Compression.Zstd;
 using MinetaleConverter.Base.Logging;
 using MinetaleConverter.Conversion.Hytale.WorldEntities;
@@ -22,7 +23,7 @@ namespace MinetaleConverter.Conversion.Hytale
     public class hy_World : IWorld
     {
         private ILogger _logger;
-        public List<IChunk> Chunks { get; private set; } = new List<IChunk>();
+        public Dictionary<string, List<IChunk>> Chunks { get; private set; } = new Dictionary<string, List<IChunk>>();
         public List<string> ChunkBsonFiles { get; private set; } = new List<string>();
 
         public hy_World(ILogger logger)
@@ -55,24 +56,27 @@ namespace MinetaleConverter.Conversion.Hytale
                 int success = 0;
                 if (useAsync)
                 {
-                    var tasks = regionFiles.Select(x => Task.Factory.StartNew(() => ParseRegion(x, false)));
+                    var tasks = regionFiles.Select(x => Task.Factory.StartNew(() => (Path.GetFileName(x), parseRegion(x, false))));
 
                     var results = await Task.WhenAll(tasks);
-                    failed = results.Count(x => x.Count() == 0);
-                    success = results.Count(x => x.Count() > 0);
+                    failed = results.Count(x => x.Item2.Count() == 0);
+                    success = results.Count(x => x.Item2.Count() > 0);
 
-                    Chunks.AddRange(results.Combine());
+                    foreach (var result in results)
+                    {
+                        Chunks.Add(result.Item1, result.Item2.Cast<IChunk>().ToList());
+                    }
                 }
                 else
                 {
                     foreach (var regionFile in regionFiles)
                     {
-                        var chunks = ParseRegion(regionFile);
+                        var chunks = parseRegion(regionFile);
                         if (chunks.Count() > 0)
                             success++;
                         else
                             failed++;
-                        Chunks.AddRange(chunks);
+                        Chunks.Add(Path.GetFileName(regionFile), chunks.Cast<IChunk>().ToList());
                     }
                 }
                 _logger.Info($"[{levelName}] {success} Region files processed. {failed} failed to process.");
@@ -86,7 +90,32 @@ namespace MinetaleConverter.Conversion.Hytale
             }
         }
 
-        public List<hy_Chunk> ParseRegion(string regionPath, bool log = true)
+        public async Task<bool> ExportFile(string path, bool useAsync = true)
+        {
+            try
+            {
+                if (useAsync)
+                {
+
+                }
+                else
+                {
+                    foreach (var kvp in Chunks)
+                    {
+                        string regionPath = Path.Combine(path, kvp.Key);
+                        exportRegion(kvp.Key, regionPath);
+                    }
+                }
+                return true;
+            }
+            catch (Exception e)
+            {
+                _logger.Critical(e);
+                return false;
+            }
+        }
+
+        private List<hy_Chunk> parseRegion(string regionPath, bool log = true)
         {
             var chunks = new List<hy_Chunk>();
 
@@ -111,12 +140,6 @@ namespace MinetaleConverter.Conversion.Hytale
             int blobCount = bin.Read<int>().SwapEndian();
             int segmentSize = bin.Read<int>().SwapEndian();
             var blobIndexes = new List<int>();
-            //for (int i = 0; i < blobCount; i++)
-            //{
-            //    int index = indexesBin.Read<int>().SwapEndian();
-            //    if (index != 0)
-            //        blobIndexes.Add(index);
-            //}
 
             for (int i = 0; i < blobCount; i++)
                 blobIndexes.Add(bin.Read<int>().SwapEndian());
@@ -179,14 +202,191 @@ namespace MinetaleConverter.Conversion.Hytale
             return chunks;
         }
 
+        private bool exportRegion(string regionFileName, string outputPath, bool log = true)
+        {
+            if (!Chunks.ContainsKey(regionFileName))
+            {
+                _logger.Error($"Could not find chunk data for {regionFileName}");
+                return false;
+            }
+
+            string[] fileNameParts = regionFileName.Split('.');
+            int regionX = int.Parse(fileNameParts[0]);
+            int regionZ = int.Parse(fileNameParts[1]);
+
+            var chunks = Chunks[regionFileName].Cast<hy_Chunk>().ToArray();
+            using (var fileStream = File.OpenWrite(outputPath))
+            using (var writer = new BinaryWriter(fileStream))
+            {
+                // Magic
+                writer.Write(Encoding.UTF8.GetBytes("HytaleIndexedStorage"));
+                // Version
+                writer.Write(1.SwapEndian());
+
+                var dict = new Dictionary<int, byte[]>();
+
+                foreach (var chunk in chunks)
+                {
+                    var chunkBin = new Binary();
+                    byte[] srcBytes;
+                    using (var memStream = new MemoryStream())
+                    {
+                        using (var bsonWriter = new BsonDataWriter(memStream))
+                        {
+                            bsonWriter.AutoCompleteOnClose = true;
+                            var serializer = new JsonSerializer();
+                            serializer.NullValueHandling = NullValueHandling.Ignore;
+                            serializer.Serialize(bsonWriter, chunk);
+                        }
+                        srcBytes = memStream.ToArray();
+                    }
+
+                    using (var memStream = new MemoryStream(srcBytes))
+                    using (var bsonReader = new BsonDataReader(memStream))
+                    {
+                        var serializer = new JsonSerializer();
+                        object? obj = serializer.Deserialize(bsonReader);
+                        int k = 0;
+                    }
+                    // Src length
+                    chunkBin.Write(srcBytes.Length.SwapEndian());
+
+                    byte[] compressedBytes = ZstdHelper.Compress(srcBytes);
+
+                    // Compressed length
+                    chunkBin.Write(compressedBytes.Length.SwapEndian());
+                    chunkBin.Write(compressedBytes);
+
+                    dict.Add(getChunkIndex(chunk.xPos, chunk.zPos, regionX, regionZ), chunkBin.Bytes.ToArray());
+                }
+
+
+                //int blobCount = dict.Keys.Max() + 1;
+                int blobCount = 1024;
+                // Blob count
+                writer.Write(blobCount.SwapEndian());
+
+                int segmentSize = dict.Values.Select(x => x.Length).Max();
+                writer.Write(segmentSize.SwapEndian());
+
+                int[] blobIndexes = new int[blobCount];
+                int segment = 1;
+                for (int i = 0; i < blobCount; i++)
+                {
+                    if (dict.ContainsKey(i))
+                    {
+                        blobIndexes[i] = segment;
+                        segment++;
+                    }
+                    else
+                        blobIndexes[i] = 0;
+                }
+
+                for (int i = 0; i < blobCount; i++)
+                    writer.Write(blobIndexes[i].SwapEndian());
+
+                for (int i = 0; i < blobCount; i++)
+                {
+                    int firstSegmentIndex = blobIndexes[i];
+                    if (firstSegmentIndex > 0)
+                    {
+                        writer.Seek((firstSegmentIndex - 1) * segmentSize + 32 + (blobCount * 4), SeekOrigin.Begin);
+                        writer.Write(dict[i]);
+                    }
+                }
+            }
+            /*
+            var bin = new Binary();
+            // Magic
+            bin.Write("HytaleIndexedStorage");
+            // Version
+            bin.Write(1.SwapEndian());
+            // Blob count
+            bin.Write(chunks.Length.SwapEndian());
+
+            var dict = new Dictionary<int, byte[]>();
+
+            foreach (var chunk in chunks)
+            {
+                var chunkBin = new Binary();
+                byte[] srcBytes;
+                using (var memStream = new MemoryStream())
+                using (var writer = new BsonDataWriter(memStream))
+                {
+                    var serializer = new JsonSerializer();
+                    serializer.Serialize(writer, chunk);
+                    srcBytes = memStream.ToArray();
+                }
+                // Src length
+                chunkBin.Write(srcBytes.Length.SwapEndian());
+
+                byte[] compressedBytes = ZstdHelper.Compress(srcBytes);
+
+                // Compressed length
+                chunkBin.Write(compressedBytes.Length.SwapEndian());
+                chunkBin.Write(compressedBytes);
+
+                dict.Add(getChunkIndex(chunk.xPos, chunk.zPos, regionX, regionZ), chunkBin.Bytes.ToArray());
+            }
+
+            int segmentSize = dict.Values.Select(x => x.Length).Max();
+            bin.Write(segmentSize.SwapEndian());
+
+            int maxIndex = dict.Keys.Max();
+
+            for (int i = 0; i <= maxIndex; i++)
+            {
+                // Blob indexes
+                if (!dict.ContainsKey(i))
+                    bin.Write(0);
+                else
+                    bin.Write(((i + 1) * segmentSize) + 32 + (maxIndex * 4));
+            }
+
+            for (int i = 0; i <= maxIndex; i++)
+            {
+                // Blob data write
+                if (!dict.ContainsKey(i))
+                    continue;
+                else
+                {
+                    bin.Seek = ((i + 1) * segmentSize) + 32 + (maxIndex * 4);
+                    bin.Write(dict[i]);
+                }
+            }
+
+            using (var fileStream = File.OpenWrite(outputPath))
+            {
+                var bytes = bin.Bytes;
+                foreach (byte b in bytes)
+                    fileStream.WriteByte(b);
+            }
+            */
+            return true;
+        }
+
         private (int chunkX, int chunkZ) getChunkCoordinates(int blobIndex, int regionX, int regionZ)
         {
             int localX = blobIndex % 32;
             int localZ = blobIndex / 32;
-            int chunkX = regionX << 5 | localX;
-            int chunkZ = regionZ << 5 | localZ;
+            int chunkX = (regionX * 32) + localX;
+            int chunkZ = (regionZ * 32) + localZ;
             return (chunkX, chunkZ);
         }
+
+        private int getChunkIndex(int chunkX, int chunkZ, int regionX, int regionZ)
+        {
+            int localX = chunkX - (regionX * 32);
+            int localZ = chunkZ - (regionZ * 32);
+            return localX + (localZ * 32);
+        }
+
+        //private int getChunkIndex(int chunkX, int chunkZ, int regionX, int regionZ)
+        //{
+        //    int localX = chunkX & 31;
+        //    int localZ = chunkZ & 31;
+        //    return ((int)localX << 32) | (localZ & 0xFFFF);
+        //}
 
         public string GetBlockId(int x, int y, int z)
         {
@@ -206,6 +406,6 @@ namespace MinetaleConverter.Conversion.Hytale
         }
 
         public IChunk? GetChunk(int x, int z) =>
-            Chunks.FirstOrDefault(c => c.xPos == x && c.zPos == z);
+            Chunks.Values.Combine().FirstOrDefault(c => c.xPos == x && c.zPos == z);
     }
 }

@@ -17,5 +17,12 @@ namespace MinetaleConverter.Base.Compression.Zstd
             int result = decomp.Unwrap(compressedData, output, 0);
             return output;
         }
+
+        public static byte[] Compress(byte[] srcData)
+        {
+            var comp = new Compressor();
+            var result = comp.Wrap(srcData);
+            return result.ToArray();
+        }
     }
 }

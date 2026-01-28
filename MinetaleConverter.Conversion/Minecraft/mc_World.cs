@@ -14,8 +14,9 @@ namespace MinetaleConverter.Conversion.Minecraft
 
         public mc_Level Level { get; private set; } = new mc_Level();
         public List<byte[]> bChunkDataNBT { get; private set; } = new List<byte[]>();
-        public List<IChunk> Chunks { get; private set; } = new List<IChunk>();
-        public List<mc_Chunk> FullChunks => Chunks.Cast<mc_Chunk>().Where(x => x.Status == "minecraft:full").ToList();
+        public Dictionary<string, List<IChunk>> Chunks { get; private set; } = new Dictionary<string, List<IChunk>>();
+        public Dictionary<string, List<mc_Chunk>> FullChunks =>
+            Chunks.Select(x => new KeyValuePair<string, List<mc_Chunk>>(x.Key, x.Value.Cast<mc_Chunk>().Where(y => y.Status == "minecraft:full").ToList())).Where(x => x.Value.Any()).ToDictionary();
 
         public mc_World(ILogger logger)
         {
@@ -52,13 +53,16 @@ namespace MinetaleConverter.Conversion.Minecraft
                 int success = 0;
                 if (useAsync)
                 {
-                    var tasks = regionFiles.Select(x => Task.Factory.StartNew(() => ParseRegion(x, false)));
+                    var tasks = regionFiles.Select(x => Task.Factory.StartNew(() => (Path.GetFileName(x), ParseRegion(x, false))));
 
                     var results = await Task.WhenAll(tasks);
-                    failed = results.Count(x => x.Count() == 0);
-                    success = results.Count(x => x.Count() > 0);
+                    failed = results.Count(x => x.Item2.Count() == 0);
+                    success = results.Count(x => x.Item2.Count() > 0);
 
-                    Chunks.AddRange(results.Combine());
+                    foreach (var result in results)
+                    {
+                        Chunks.Add(result.Item1, result.Item2.Cast<IChunk>().ToList());
+                    }
                 }
                 else
                 {
@@ -69,7 +73,7 @@ namespace MinetaleConverter.Conversion.Minecraft
                             success++;
                         else
                             failed++;
-                        Chunks.AddRange(chunks);
+                        Chunks.Add(Path.GetFileName(regionFile), chunks.Cast<IChunk>().ToList());
                     }
                 }
                 _logger.Info($"[{Level.LevelName}] {success} Region files processed. {failed} failed to process.");
@@ -81,6 +85,11 @@ namespace MinetaleConverter.Conversion.Minecraft
                 _logger.Critical(e);
                 return false;
             }
+        }
+
+        public async Task<bool> ExportFile(string path, bool useAsync = true)
+        {
+            return false;
         }
 
         public List<mc_Chunk> ParseRegion(string regionPath, bool log = true)
@@ -247,6 +256,6 @@ namespace MinetaleConverter.Conversion.Minecraft
         }
 
         public mc_Chunk? GetChunk(int x, int z) =>
-            FullChunks.FirstOrDefault(c => c.xPos == x && c.zPos == z);
+            FullChunks.Values.Combine().FirstOrDefault(c => c.xPos == x && c.zPos == z);
     }
 }

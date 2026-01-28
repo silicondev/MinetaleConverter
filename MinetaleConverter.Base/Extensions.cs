@@ -84,6 +84,19 @@ namespace MinetaleConverter.Base
             return list.ToArray();
         }
 
+        public static T[] Combine<T>(this IEnumerable<IEnumerable<T>> arr) => arr.Select(x => x.ToArray()).Combine();
+
+        //public static T[] Combine<T>(this IEnumerable<List<T>> arr) => arr.Select(x => x.ToArray()).Combine();
+
+        public static TValue[] Combine<TKey, TValue>(this Dictionary<TKey, TValue[]>.ValueCollection arr) where TKey : notnull =>
+            arr.ToList().Combine();
+
+        public static TValue[] Combine<TKey, TValue>(this Dictionary<TKey, IEnumerable<TValue>>.ValueCollection arr) where TKey : notnull =>
+            arr.ToList().Combine();
+
+        public static TValue[] Combine<TKey, TValue>(this Dictionary<TKey, List<TValue>>.ValueCollection arr) where TKey : notnull =>
+            arr.ToList().Combine();
+
         public static (byte, byte) GetNibbles(this byte b)
         {
             byte nibble1 = (byte) (b & 0x0F);
@@ -141,5 +154,21 @@ namespace MinetaleConverter.Base
         }
 
         public static string ToArrayString<T>(this IEnumerable<T> arr) => string.Join(", ", arr);
+
+        //public static Dictionary<TKey, TValue> ToDictionary<TKey, TValue>(this IEnumerable<KeyValuePair<TKey, TValue>> list) where TKey : notnull
+        //{
+        //    var dict = new Dictionary<TKey, TValue>();
+        //    foreach (var item in list)
+        //        dict.Add(item.Key, item.Value);
+        //    return dict;
+        //}
+
+        public static T[] Stretch<T>(this T obj, int count)
+        {
+            var arr = new T[count];
+            for (int i = 0; i < count; i++)
+                arr[i] = obj;
+            return arr;
+        }
     }
 }

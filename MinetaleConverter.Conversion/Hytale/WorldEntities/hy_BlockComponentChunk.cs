@@ -15,6 +15,7 @@ namespace MinetaleConverter.Conversion.Hytale.WorldEntities
         {
             set => setBlockComponents(value);
         }
+        [JsonIgnore]
         public Dictionary<string, hy_BlockComponentItem> BlockComponentsDict { get; set; } = new Dictionary<string, hy_BlockComponentItem>();
         private void setBlockComponents(object? obj)
         {

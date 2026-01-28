@@ -9,8 +9,9 @@ namespace MinetaleConverter.Conversion.Interfaces
 {
     public interface IWorld
     {
-        List<IChunk> Chunks { get; }
+        Dictionary<string, List<IChunk>> Chunks { get; }
         Task<bool> ImportFile(string path, bool useAsync = true);
+        Task<bool> ExportFile(string path, bool useAsync = true);
         int HeightLevel { get; }
         int BedrockLevel { get; }
         string GetBlockId(int x, int y, int z);

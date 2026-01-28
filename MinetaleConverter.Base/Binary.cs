@@ -10,7 +10,7 @@ namespace MinetaleConverter.Base
 {
     public class Binary
     {
-        public byte[] Bytes { get; private set; }
+        public List<byte> Bytes { get; private set; } = new List<byte>();
         public int Seek
         {
             get => _seek;
@@ -29,15 +29,15 @@ namespace MinetaleConverter.Base
             get
             {
                 if (EOF)
-                    return Bytes[Bytes.Length - 1];
+                    return Bytes[Length - 1];
                 else
                     return Bytes[Seek];
             }
         }
 
-        public bool EOF => Seek >= Bytes.Length;
+        public bool EOF => Seek >= Length;
 
-        public static Dictionary<Type, (int len, Func<byte[], object> parser)> Matrix = new Dictionary<Type, (int, Func<byte[], object>)>()
+        public static Dictionary<Type, (int len, Func<byte[], object> parser)> ReadMatrix = new Dictionary<Type, (int, Func<byte[], object>)>()
         {
             { typeof(int), (4, (x) => BitConverter.ToInt32(x)) },
             { typeof(uint), (4, (x) => BitConverter.ToUInt32(x)) },
@@ -51,20 +51,41 @@ namespace MinetaleConverter.Base
             { typeof(ushort), (2, (x) => BitConverter.ToUInt16(x)) }
         };
 
-        public int Length => Bytes.Length;
+        public static Dictionary<Type, Func<object, byte[]>> WriteMatrix = new Dictionary<Type, Func<object, byte[]>>()
+        {
+            { typeof(int), x => BitConverter.GetBytes((int)x) },
+            { typeof(uint), x => BitConverter.GetBytes((uint)x) },
+            { typeof(byte), x => [(byte)x] },
+            { typeof(string), x => Encoding.UTF8.GetBytes(x.ToString() ?? "") },
+            { typeof(double), x => BitConverter.GetBytes((double)x) },
+            { typeof(bool), x => BitConverter.GetBytes((bool)x) },
+            { typeof(long), x => BitConverter.GetBytes((long)x) },
+            { typeof(DateTime), x => BitConverter.GetBytes(((DateTime)x).Ticks) },
+            { typeof(short), x => BitConverter.GetBytes((short)x) },
+            { typeof(ushort), x => BitConverter.GetBytes((ushort)x) },
+            { typeof(byte[]), x => (byte[])x }
+        };
+
+        public int Length => Bytes.Count();
 
         public Binary(byte[] arr)
         {
-            Bytes = arr;
+            Bytes = new List<byte>(arr);
+        }
+
+        public Binary()
+        {
+            
         }
 
         public byte[] Subset(int index, int count)
         {
-            if (index < 0 || index >= Bytes.Length)
+            if (index < 0 || index >= Length)
+                //return ((byte)0).Stretch(count);
                 throw new ArgumentOutOfRangeException();
-            if (index + count >= Bytes.Length)
-                count = Bytes.Length - index;
-            return Bytes[index..(index + count)];
+            if (index + count >= Length)
+                count = Length - index;
+            return Bytes[index..(index + count)].ToArray();
         }
 
         public byte[] Subset(int count, bool seek = true)
@@ -75,13 +96,24 @@ namespace MinetaleConverter.Base
             return data;
         }
 
+        public void Cut(int index = -1, int count = -1)
+        {
+            if (index == -1)
+                index = Seek;
+            if (count == -1)
+                count = Length - index;
+            Bytes = Bytes[index..(index + count)];
+            //Bytes = Subset(index, count).ToList();
+            Seek -= index;
+        }
+
         public T Read<T>(int index = -1, bool seek = true) => (T)Convert.ChangeType(Read(typeof(T), index, seek), typeof(T));
 
         public object Read(Type t, int index = -1, bool seek = true)
         {
             if (index >= 0)
                 Seek = index;
-            (int len, Func<byte[], object> parser) = Matrix[t];
+            (int len, Func<byte[], object> parser) = ReadMatrix[t];
             if (len < 0)
                 //return ReadUntilNull(t, index, seek);
                 return ReadGivenLength(t, typeof(uint), (x) => ((uint)x) - 1);
@@ -99,7 +131,7 @@ namespace MinetaleConverter.Base
         {
             if (index >= 0)
                 Seek = index;
-            (_, Func<byte[], object> parser) = Matrix[t];
+            (_, Func<byte[], object> parser) = ReadMatrix[t];
             byte[] b = Subset(Seek, len);
             Seek += len;
             return parser(b);
@@ -111,11 +143,12 @@ namespace MinetaleConverter.Base
         {
             if (index >= 0)
                 Seek = index;
-            (_, Func<byte[], object> parser) = Matrix[t];
+            (_, Func<byte[], object> parser) = ReadMatrix[t];
             int ind = Bytes.FindNextIndex(x => x == 0x00, Seek);
             if (ind == -1)
                 throw new Exception("Huh?");
-            byte[] b = Bytes[Seek..ind];
+            byte[] b = Bytes[Seek..ind].ToArray();
+            //byte[] b = Subset(Seek, ind - Seek).ToArray();
             Seek = ind + 1;
             return parser(b);
         }
@@ -143,7 +176,7 @@ namespace MinetaleConverter.Base
             if (index >= 0)
                 Seek = index;
             index = Seek;
-            (_, Func<byte[], object> parser) = Matrix[t];
+            (_, Func<byte[], object> parser) = ReadMatrix[t];
             object tLen = Read(lenType);
             if (transform != null)
                 tLen = transform(tLen);
@@ -155,15 +188,24 @@ namespace MinetaleConverter.Base
             return result;
         }
 
+        public void Write<T>(T obj, int index = -1, bool seek = true) => Write(typeof(T), obj, index, seek);
 
-        public void Cut(int index = -1, int count = -1)
+        public void Write(Type t, object? obj, int index = -1, bool seek = true)
         {
-            if (index == -1)
-                index = Seek;
-            if (count == -1)
-                count = Bytes.Length - index;
-            Bytes = Bytes[index..(index + count)];
-            Seek -= index;
+            if (index >= 0)
+                Seek = index;
+
+            if (obj == null)
+                return;
+
+            byte[] bytes = WriteMatrix[t](obj);
+            foreach (var b in bytes)
+            {
+                while (Seek >= Length)
+                    Bytes.Add(0);
+                Bytes[Seek] = b;
+                Seek++;
+            }
         }
     }
 }

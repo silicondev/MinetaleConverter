@@ -8,6 +8,6 @@ namespace MinetaleConverter.Conversion.Hytale.WorldEntities
 {
     public class hy_BlockComponentItem
     {
-        public hy_BlockComponents Components { get; set; }
+        public hy_BlockComponents Components { get; set; } = new hy_BlockComponents();
     }
 }

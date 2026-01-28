@@ -6,8 +6,7 @@ using System.Threading.Tasks;
 
 namespace MinetaleConverter.Conversion.Hytale.WorldEntities
 {
-    public class hy_BlockComponents
+    public class hy_Entity
     {
-        public hy_FarmingBlock FarmingBlock { get; set; } = new hy_FarmingBlock();
     }
 }
