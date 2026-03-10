@@ -118,6 +118,6 @@ namespace MinetaleConverter.Conversion.Hytale.WorldEntities
         //[JsonConverter(typeof(BsonOptionalClass<hy_Binary>))]
         public hy_Binary BlockPhysics { get; set; } = new hy_Binary();
         public hy_Binary Fluid { get; set; } = new hy_Binary();
-        public hy_Binary Block { get; set; } = new hy_Binary();
+        public hy_Palette Block { get; set; } = new hy_Palette();
     }
 }

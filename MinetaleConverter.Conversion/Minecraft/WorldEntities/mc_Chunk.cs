@@ -53,5 +53,10 @@ namespace MinetaleConverter.Conversion.Minecraft.WorldEntities
 
             return section.GetBiome(x, y - sectionId * 16, z);
         }
+
+        public void SetBlock(string blockId, int x, int y, int z)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

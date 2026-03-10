@@ -255,7 +255,26 @@ namespace MinetaleConverter.Conversion.Minecraft
             return chunk.GetBiome(x - (xChunkPos * 16), y, z - (zChunkPos * 16));
         }
 
+        public string GetChunkId(int x, int y, int z)
+        {
+            int xChunkPos = (int)Math.Floor(x / 16d);
+            int zChunkPos = (int)Math.Floor(z / 16d);
+            int sectionId = (int)Math.Floor(y / 16d);
+
+            var chunk = GetChunk(xChunkPos, zChunkPos);
+
+            if (chunk == null)
+                return $"No chunk found at {xChunkPos},{zChunkPos}";
+
+            return $"Chunk_{chunk.xPos}.{chunk.zPos} Section {sectionId}";
+        }
+
         public mc_Chunk? GetChunk(int x, int z) =>
             FullChunks.Values.Combine().FirstOrDefault(c => c.xPos == x && c.zPos == z);
+
+        public void SetBlockId(string blockId, int x, int y, int z)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

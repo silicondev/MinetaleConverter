@@ -25,6 +25,7 @@ namespace MinetaleConverter.Conversion.Hytale
         private ILogger _logger;
         public Dictionary<string, List<IChunk>> Chunks { get; private set; } = new Dictionary<string, List<IChunk>>();
         public List<string> ChunkBsonFiles { get; private set; } = new List<string>();
+        public DebugType DebugType { get; set; } = DebugType.None;
 
         public hy_World(ILogger logger)
         {
@@ -124,25 +125,25 @@ namespace MinetaleConverter.Conversion.Hytale
             int regionX = int.Parse(fileNameParts[0]);
             int regionZ = int.Parse(fileNameParts[1]);
 
-            Binary bin = new Binary(File.ReadAllBytes(regionPath));
+            Binary bin = new Binary(File.ReadAllBytes(regionPath), EndianMode.Big);
             string magic = bin.ReadLength<string>(20);
             if (magic != "HytaleIndexedStorage")
             {
                 _logger.Error($"[{fileName}] >FAIL< Region file does not start with correct magic text.");
                 return chunks;
             }
-            int version = bin.Read<int>().SwapEndian();
+            int version = bin.Read<int>();
             if (version < 0 || version > 1)
             {
                 _logger.Error($"[{fileName}] >FAIL< Region file is not a supported verion. (Found {version}. Should be 0 or 1)");
                 return chunks;
             }
-            int blobCount = bin.Read<int>().SwapEndian();
-            int segmentSize = bin.Read<int>().SwapEndian();
+            int blobCount = bin.Read<int>();
+            int segmentSize = bin.Read<int>();
             var blobIndexes = new List<int>();
 
             for (int i = 0; i < blobCount; i++)
-                blobIndexes.Add(bin.Read<int>().SwapEndian());
+                blobIndexes.Add(bin.Read<int>());
 
             int errorChunks = 0;
 
@@ -156,8 +157,8 @@ namespace MinetaleConverter.Conversion.Hytale
 
                     bin.Seek = ((firstSegmentIndex - 1) * segmentSize) + 32 + (blobCount * 4);
 
-                    int srcLength = bin.Read<int>().SwapEndian();
-                    int compLength = bin.Read<int>().SwapEndian();
+                    int srcLength = bin.Read<int>();
+                    int compLength = bin.Read<int>();
                     byte[] compressedData = bin.Subset(compLength);
                     if (compressedData.Length != compLength)
                     {
@@ -168,13 +169,16 @@ namespace MinetaleConverter.Conversion.Hytale
                     byte[] bsonData = ZstdHelper.Decompress(compressedData, srcLength);
                     (int chunkX, int chunkZ) = getChunkCoordinates(i, regionX, regionZ);
 
-                    using (var memStream = new MemoryStream(bsonData))
-                    using (var reader = new BsonDataReader(memStream))
+                    if (DebugType == DebugType.Import)
                     {
-                        var serializer = new JsonSerializer();
-                        var obj = serializer.Deserialize(reader);
-                        string json = JsonConvert.SerializeObject(obj, Formatting.Indented);
-                        ChunkBsonFiles.Add(json);
+                        using (var memStream = new MemoryStream(bsonData))
+                        using (var reader = new BsonDataReader(memStream))
+                        {
+                            var serializer = new JsonSerializer();
+                            var obj = serializer.Deserialize(reader);
+                            string json = JsonConvert.SerializeObject(obj, Formatting.Indented);
+                            ChunkBsonFiles.Add(json);
+                        }
                     }
 
                     hy_Chunk? chunk = null;
@@ -241,13 +245,18 @@ namespace MinetaleConverter.Conversion.Hytale
                         srcBytes = memStream.ToArray();
                     }
 
-                    using (var memStream = new MemoryStream(srcBytes))
-                    using (var bsonReader = new BsonDataReader(memStream))
+                    if (DebugType == DebugType.Export)
                     {
-                        var serializer = new JsonSerializer();
-                        object? obj = serializer.Deserialize(bsonReader);
-                        int k = 0;
+                        using (var memStream = new MemoryStream(srcBytes))
+                        using (var bsonReader = new BsonDataReader(memStream))
+                        {
+                            var serializer = new JsonSerializer();
+                            object? obj = serializer.Deserialize(bsonReader);
+                            string json = JsonConvert.SerializeObject(obj, Formatting.Indented);
+                            ChunkBsonFiles.Add(json);
+                        }
                     }
+                    
                     // Src length
                     chunkBin.Write(srcBytes.Length.SwapEndian());
 
@@ -395,9 +404,28 @@ namespace MinetaleConverter.Conversion.Hytale
 
             var chunk = GetChunk(xChunkPos, zChunkPos);
             if (chunk == null)
-                return "";
+                return "Chunk not found.";
 
             return chunk.GetBlock(x - (xChunkPos * 32), y, z - (zChunkPos * 32));
+        }
+
+        public void SetBlockId(string blockId, int x, int y, int z)
+        {
+            int xChunkPos = (int)Math.Floor(x / 32d);
+            int zChunkPos = (int)Math.Floor(z / 32d);
+
+            var chunk = GetChunk(xChunkPos, zChunkPos);
+            if (chunk == null)
+            {
+                chunk = new hy_Chunk()
+                {
+                    xPos = xChunkPos,
+                    zPos = zChunkPos
+                };
+                addChunk(chunk);
+            }
+            
+            chunk.SetBlock(blockId, x - (xChunkPos * 32), y, z - (zChunkPos * 32));
         }
 
         public string GetBiomeId(int x, int y, int z)
@@ -405,7 +433,38 @@ namespace MinetaleConverter.Conversion.Hytale
             throw new NotImplementedException();
         }
 
+        public string GetChunkId(int x, int y, int z)
+        {
+            int xChunkPos = (int)Math.Floor(x / 32d);
+            int zChunkPos = (int)Math.Floor(z / 32d);
+            int sectionId = (int)Math.Floor(y / 32d);
+
+            var chunk = GetChunk(xChunkPos, zChunkPos);
+
+            if (chunk == null)
+                return $"No chunk found at {xChunkPos},{zChunkPos}";
+
+            return $"Chunk_{chunk.xPos}.{chunk.zPos} Section: {sectionId} In Chunk: {x - (chunk.xPos * 32)},{y - sectionId * 32},{z - (chunk.zPos * 32)}";
+        }
+
         public IChunk? GetChunk(int x, int z) =>
             Chunks.Values.Combine().FirstOrDefault(c => c.xPos == x && c.zPos == z);
+
+        private void addChunk(IChunk chunk)
+        {
+            int regionX = chunk.xPos >> 5;
+            int regionZ = chunk.zPos >> 5;
+            string regionFileName = $"{regionX}.{regionZ}.region.bin";
+            if (!Chunks.ContainsKey(regionFileName))
+                Chunks[regionFileName] = new List<IChunk>();
+            Chunks[regionFileName].Add(chunk);
+        }
+    }
+
+    public enum DebugType
+    {
+        None,
+        Import,
+        Export
     }
 }

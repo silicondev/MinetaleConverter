@@ -17,6 +17,20 @@ namespace MinetaleConverter.Conversion.Hytale.WorldEntities
         [JsonIgnore]
         public int zPos { get; set; }
 
+        public hy_Chunk()
+        {
+            //for (int i = 0; i < 10; i++)
+            //{
+            //    Components.ChunkColumn.Sections.Add(new hy_Section());
+            //}
+        }
+
+        public hy_Chunk(int x, int z) : this()
+        {
+            xPos = x;
+            zPos = z;
+        }
+
         public void Populate(int x, int z)
         {
             xPos = x;
@@ -36,9 +50,17 @@ namespace MinetaleConverter.Conversion.Hytale.WorldEntities
         public string GetBlock(int x, int y, int z)
         {
             int sectionId = (int)Math.Floor(y / 32d);
-            //var section = Components.ChunkColumn.Sections.FirstOrDefault(x => x.Id == sectionId);
-            //return section?.GetBlock(x, y - sectionId * 32, z) ?? "Empty";
-            return "Empty";
+            var section = Components.ChunkColumn.Sections[sectionId];
+            return section?.GetBlock(x, y - sectionId * 32, z) ?? "Empty";
+        }
+
+        public void SetBlock(string blockId, int x, int y, int z)
+        {
+            int sectionId = (int)Math.Floor(y / 32d);
+            var section = Components.ChunkColumn.Sections[sectionId];
+            if (section == null)
+                return;
+            section.SetBlock(blockId, x, y - sectionId * 32, z);
         }
     }
 }

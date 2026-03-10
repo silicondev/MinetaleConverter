@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices.Marshalling;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -36,7 +38,17 @@ namespace MinetaleConverter.Base
         {
             unchecked
             {
-                return (int)(((uint)input).SwapEndian());
+                unsafe
+                {
+                    int j = input;
+                    uint i = *(uint*)&j;
+                    i = i.SwapEndian();
+                    j = *(int*)&i;
+                    
+                    return j;
+                }
+                //return (int)(((uint)input).SwapEndian());
+                
             }
         }
 
@@ -116,15 +128,43 @@ namespace MinetaleConverter.Base
             return arr;
         }
 
-        public static int ToInt(this bool[] arr)
+        public static int ToInt(this bool[] arr, bool bigEndian = false)
         {
-            int len = arr.Length;
+            bool[] bits = new bool[32];
+            if (bigEndian)
+                Array.Copy(arr, 0, bits, 32 - arr.Length, arr.Length);
+            else
+                Array.Copy(arr, 0, bits, 0, arr.Length);
+
+            byte[] bytes = new byte[4];
+            for (int i = 0; i < 32; i++)
+            {
+                int byteIndex = i / 8;
+                int bitIndex = bigEndian ? 7 - (i % 8) : i % 8;
+                var mask = (byte)(1 << bitIndex);
+                if (bits[i])
+                    bytes[byteIndex] |= mask;
+                else
+                    bytes[byteIndex] &= mask;
+            }
+            int result = BitConverter.ToInt32(bytes);
+            return result;
+        }
+
+        public static bool[] FromInt(this int num, int len, bool bigEndian = false)
+        {
+            var arr = new bool[len];
             if (len > 32)
                 len = 32;
-            int result = 0;
+            byte[] bytes = BitConverter.GetBytes(num);
             for (int i = 0; i < len; i++)
-                result |= arr[i] ? 1 << i : 0;
-            return result;
+            {
+                int j = bigEndian ? 32 - len + i : i;
+                int byteIndex = j / 8;
+                int bitIndex = j % 8;
+                arr[i] = (bytes[byteIndex] & (1 << bitIndex)) != 0;
+            }
+            return arr;
         }
 
         public static Dictionary<int, T> ToNumberedDictionary<T>(this IEnumerable<T> list)
@@ -169,6 +209,19 @@ namespace MinetaleConverter.Base
             for (int i = 0; i < count; i++)
                 arr[i] = obj;
             return arr;
+        }
+
+        public static TKey? KeyOf<TKey, TValue>(this Dictionary<TKey, TValue> dict, TValue val) where TKey : notnull
+        {
+            if (!dict.ContainsValue(val))
+                return default;
+
+            foreach (var kvp in dict)
+            {
+                if (kvp.Value.Equals(val))
+                    return kvp.Key;
+            }
+            return default;
         }
     }
 }

@@ -15,6 +15,8 @@ namespace MinetaleConverter.Conversion.Interfaces
         int HeightLevel { get; }
         int BedrockLevel { get; }
         string GetBlockId(int x, int y, int z);
+        void SetBlockId(string blockId, int x, int y, int z);
         string GetBiomeId(int x, int y, int z);
+        string GetChunkId(int x, int y, int z);
     }
 }

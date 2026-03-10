@@ -11,6 +11,14 @@
     "HytaleRead": {
       "commandName": "Project",
       "commandLineArgs": "--mode analyze --hytale Hytale_TestWorld --output Hytale_TestChunks"
+    },
+    "HytaleCreate": {
+      "commandName": "Project",
+      "commandLineArgs": "--mode create --hytale HytaleCreateTest"
+    },
+    "HytaleRead Void": {
+      "commandName": "Project",
+      "commandLineArgs": "--mode analyze --hytale Hytale_TestWorld_Void --output Hytale_TestChunks"
     }
   }
 }

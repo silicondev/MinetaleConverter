@@ -42,7 +42,7 @@ namespace MinetaleConverter.Base.Blob
 
         public bool Import(byte[] bytes, bool includeInvalidIndexes = false)
         {
-            Binary = new Binary(bytes);
+            Binary = new Binary(bytes, EndianMode.Big);
             Binary.Seek = 0;
             byte[] header = Binary.Subset(_headerLength);
             if (header.Length < _headerLength)
@@ -51,16 +51,16 @@ namespace MinetaleConverter.Base.Blob
             string magic = headerBin.ReadLength<string>(_magicString.Length);
             if (magic != _magicString)
                 return false;
-            FileVersion = headerBin.Read<int>().SwapEndian();
+            FileVersion = headerBin.Read<int>();
             if (FileVersion < 0 || FileVersion > 1)
                 return false;
-            BlobCount = headerBin.Read<int>().SwapEndian();
-            SegmentSize = headerBin.Read<int>().SwapEndian();
+            BlobCount = headerBin.Read<int>();
+            SegmentSize = headerBin.Read<int>();
 
             var indexesBin = new Binary(Binary.Subset(BlobCount * 4));
             for (int i = 0; i < BlobCount; i++)
             {
-                int index = indexesBin.Read<int>().SwapEndian();
+                int index = indexesBin.Read<int>();
                 if (index != 0 || includeInvalidIndexes)
                     BlobIndexes.Add(index);
             }
@@ -78,8 +78,8 @@ namespace MinetaleConverter.Base.Blob
 
             int segIndex = getSegmentIndex(index);
             Binary!.Seek = segIndex;
-            int srcLength = Binary.Read<int>().SwapEndian();
-            int compLength = Binary.Read<int>().SwapEndian();
+            int srcLength = Binary.Read<int>();
+            int compLength = Binary.Read<int>();
             byte[] compressedData = Binary.Subset(compLength, false);
             if (compressedData.Length != compLength)
                 throw new Exception("Compressed data out of bounds of file.");

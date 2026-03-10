@@ -55,7 +55,9 @@ namespace MinetaleConverter.ConsoleApp
                     else if (commandDict.ContainsKey("hytale"))
                     {
                         worldPath = commandDict["hytale"];
-                        world = new hy_World(logger);
+                        var hyWorld = new hy_World(logger);
+                        hyWorld.DebugType = DebugType.Export;
+                        world = hyWorld;
                     }
                     else
                         throw new ArgumentException("Analyze requires either a Minecraft or Hytale world path");
@@ -98,24 +100,35 @@ namespace MinetaleConverter.ConsoleApp
                     }
                     else
                     {
-                        //var bson = ((hy_World)world).ChunkBsonFiles;
-                        //for (int i = 0; i < bson.Count; i++)
-                        //{
-                        //    var chunk = bson[i];
-                        //    if (chunk != null)
-                        //    {
-                        //        using (var fs = new FileStream(@$"{outputPath}\chunk-{i}.bson", FileMode.CreateNew))
-                        //        using (var writer = new StreamWriter(fs))
-                        //        {
-                        //            writer.WriteLine(chunk);
-                        //        }
-                        //    }
-                        //}
                         copyDir(worldPath, outputPath);
                         string worldFolder = Path.Combine(outputPath, @"universe\worlds\default\chunks");
                         Directory.Delete(worldFolder, true);
                         Directory.CreateDirectory(worldFolder);
                         world.ExportFile(worldFolder, !DEBUGMODE);
+
+                        var bson = ((hy_World)world).ChunkBsonFiles;
+                        if (bson.Any())
+                        {
+                            if (!Directory.Exists($"{outputPath}-chunks"))
+                                Directory.CreateDirectory($"{outputPath}-chunks");
+                            else
+                            {
+                                Directory.Delete($"{outputPath}-chunks", true);
+                                Directory.CreateDirectory($"{outputPath}-chunks");
+                            }
+                            for (int i = 0; i < bson.Count; i++)
+                            {
+                                var chunk = bson[i];
+                                if (chunk != null)
+                                {
+                                    using (var fs = new FileStream(@$"{outputPath}-chunks\chunk-{i}.json", FileMode.CreateNew))
+                                    using (var writer = new StreamWriter(fs))
+                                    {
+                                        writer.WriteLine(chunk);
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     while (true)
@@ -133,6 +146,7 @@ namespace MinetaleConverter.ConsoleApp
                                 break;
                             case "block":
                             case "biome":
+                            case "chunk":
                                 if (cmdParts.Length != 4 ||
                                     !int.TryParse(cmdParts[1], out int bx) ||
                                     !int.TryParse(cmdParts[2], out int by) ||
@@ -142,10 +156,18 @@ namespace MinetaleConverter.ConsoleApp
                                     break;
                                 }
 
-                                if (cmdParts[0] == "block")
-                                    Console.WriteLine(world.GetBlockId(bx, by, bz));
-                                else
-                                    Console.WriteLine(world.GetBiomeId(bx, by, bz));
+                                switch (cmdParts[0])
+                                {
+                                    case "block":
+                                        Console.WriteLine(world.GetBlockId(bx, by, bz));
+                                        break;
+                                    case "biome":
+                                        Console.WriteLine(world.GetBiomeId(bx, by, bz));
+                                        break;
+                                    case "chunk":
+                                        Console.WriteLine(world.GetChunkId(bx, by, bz));
+                                        break;
+                                }
                                 break;
                             case "column":
                                 if (cmdParts.Length != 3 ||
@@ -211,6 +233,60 @@ namespace MinetaleConverter.ConsoleApp
                                     //}
                                 }
                                 break;
+                            case "custom":
+                                for (int z = 0; z <= 31; z++)
+                                {
+                                    var list = new List<string>();
+                                    for (int x = 0; x <= 31; x++)
+                                    {
+                                        // Get blocks
+                                        string id = world.GetBlockId(x, 79, z);
+                                        string toWrite = "";
+                                        string[] parts = id.Split('_');
+                                        foreach (string part in parts.Where(x => !string.IsNullOrEmpty(x)))
+                                            toWrite += part[0];
+                                        int pad = 4 - toWrite.Length;
+                                        list.Add(toWrite.PadLeft(4));
+
+                                        // Get chunk block ids
+                                        //string chunkInfo = world.GetChunkId(x, 79, z);
+                                        //string[] parts = chunkInfo.Split(':');
+                                        //string coordsStr = parts[2].Trim();
+                                        //string[] coordParts = coordsStr.Split(",");
+                                        //int ix = int.Parse(coordParts[0]);
+                                        //int iy = int.Parse(coordParts[1]);
+                                        //int iz = int.Parse(coordParts[2]);
+                                        //string sx = ix.ToString("00").PadLeft(3);
+                                        //string sz = iz.ToString("00").PadLeft(3);
+                                        //list.Add($"{sx},{sz}");
+
+                                        // Get chunk ids
+                                        //string chunkInfo = world.GetChunkId(x, 79, z);
+                                        //string[] parts = chunkInfo.Split(' ');
+                                        //string chunkId = parts[0];
+                                        //string[] idParts = chunkId.Split('_');
+                                        //string nums = idParts[1];
+                                        //string[] numParts = nums.Split('.');
+                                        //int ix = int.Parse(numParts[0]);
+                                        //int iz = int.Parse(numParts[1]);
+                                        //string sx = ix.ToString("0").PadLeft(2);
+                                        //string sz = iz.ToString("0").PadLeft(2);
+                                        //list.Add($"{sx},{sz}");
+
+                                        // Get indexes
+                                        //string chunkInfo = world.GetChunkId(x, 79, z);
+                                        //string[] parts = chunkInfo.Split(':');
+                                        //string coordsStr = parts[2].Trim();
+                                        //string[] coordParts = coordsStr.Split(",");
+                                        //int ix = int.Parse(coordParts[0]);
+                                        //int iy = int.Parse(coordParts[1]);
+                                        //int iz = int.Parse(coordParts[2]);
+                                        //int index = hy_Palette.IndexerFunc(ix, iy, iz);
+                                        //list.Add(index.ToString());
+                                    }
+                                    Console.WriteLine(string.Join('|', list));
+                                }
+                                break;
                         }
                         if (exit)
                             break;
@@ -220,6 +296,46 @@ namespace MinetaleConverter.ConsoleApp
                 case "converttohytale":
                     break;
                 case "converttominecraft":
+                    break;
+                case "create":
+                    string createWorldPath;
+                    IWorld createWorld;
+                    if (commandDict.ContainsKey("minecraft"))
+                    {
+                        createWorldPath = commandDict["minecraft"];
+                        createWorld = new mc_World(logger);
+                    }
+                    else if (commandDict.ContainsKey("hytale"))
+                    {
+                        createWorldPath = commandDict["hytale"];
+                        var hyWorld = new hy_World(logger);
+                        hyWorld.DebugType = DebugType.Export;
+                        createWorld = hyWorld;
+
+                        double progress = 0;
+                        double total = 1000 * 1000;
+                        for (int z = 0; z < 1000; z++)
+                        {
+                            for (int x = 0; x < 1000; x++)
+                            {
+                                createWorld.SetBlockId("Rock_Stone", x, 150, z);
+                                progress++;
+                                Console.Write($"\r{(progress / total) * 100d:N3}%                                                  ");
+                            }
+                        }
+                    }
+                    else
+                        throw new ArgumentException("Analyze requires either a Minecraft or Hytale world path");
+
+                    if (!Directory.Exists(createWorldPath))
+                        Directory.CreateDirectory(createWorldPath);
+                    else
+                    {
+                        Directory.Delete(createWorldPath, true);
+                        Directory.CreateDirectory(createWorldPath);
+                    }
+
+                    await createWorld.ExportFile(createWorldPath, !DEBUGMODE);
                     break;
                 default:
                     throw new ArgumentException("Unrecognized mode.");
