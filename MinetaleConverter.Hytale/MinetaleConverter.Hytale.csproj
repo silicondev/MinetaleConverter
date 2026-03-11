@@ -1,7 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -16,8 +15,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MinetaleConverter.Base\MinetaleConverter.Base.csproj" />
-    <ProjectReference Include="..\MinetaleConverter.Hytale\MinetaleConverter.Hytale.csproj" />
-    <ProjectReference Include="..\MinetaleConverter.Minecraft\MinetaleConverter.Minecraft.csproj" />
   </ItemGroup>
 
 </Project>

@@ -4,21 +4,17 @@
       "commandName": "WSL2",
       "distributionName": ""
     },
-    "MinecraftRead": {
+    "Hytale Analyse": {
       "commandName": "Project",
-      "commandLineArgs": "--mode analyze --minecraft Minecraft_TestWorld --output Minecraft_TestChunks"
+      "commandLineArgs": "--mode analyse --hytale Hytale_TestWorld"
     },
-    "HytaleRead": {
+    "Hytale Analyse Void": {
       "commandName": "Project",
-      "commandLineArgs": "--mode analyze --hytale Hytale_TestWorld --output Hytale_TestChunks"
+      "commandLineArgs": "--mode analyse --hytale Hytale_TestWorld_Void"
     },
-    "HytaleCreate": {
+    "Minecraft Analyse": {
       "commandName": "Project",
-      "commandLineArgs": "--mode create --hytale HytaleCreateTest"
-    },
-    "HytaleRead Void": {
-      "commandName": "Project",
-      "commandLineArgs": "--mode analyze --hytale Hytale_TestWorld_Void --output Hytale_TestChunks"
+      "commandLineArgs": "--mode analyse --minecraft Minecraft_TestWorld"
     }
   }
 }
