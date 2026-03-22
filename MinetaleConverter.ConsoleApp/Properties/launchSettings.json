@@ -15,6 +15,10 @@
     "Minecraft Analyse": {
       "commandName": "Project",
       "commandLineArgs": "--mode analyse --minecraft Minecraft_TestWorld"
+    },
+    "Minecraft Analyse Void": {
+      "commandName": "Project",
+      "commandLineArgs": "--mode analyse --minecraft Minecraft_TestWorld_Void"
     }
   }
 }

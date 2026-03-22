@@ -195,13 +195,13 @@ namespace MinetaleConverter.ConsoleApp
                             switch (cmdParts[0])
                             {
                                 case "block":
-                                    Console.WriteLine(world.GetBlockId(bx, by, bz));
+                                    Console.WriteLine(world.GetBlockId(bx, by, bz) ?? "Not found.");
                                     break;
                                 case "biome":
-                                    Console.WriteLine(world.GetBiomeId(bx, by, bz));
+                                    Console.WriteLine(world.GetBiomeId(bx, by, bz) ?? "Not found.");
                                     break;
                                 case "chunk":
-                                    Console.WriteLine(world.GetChunkId(bx, by, bz));
+                                    Console.WriteLine(world.GetChunkId(bx, by, bz) ?? "Not found.");
                                     break;
                             }
                             break;
@@ -218,6 +218,63 @@ namespace MinetaleConverter.ConsoleApp
                             {
                                 Console.WriteLine($"[{i:000}] {world.GetBlockId(cx, i, cz)}");
                             }
+                            break;
+                        case "cross":
+                            if (cmdParts.Length != 4 ||
+                                !int.TryParse(cmdParts[1], out int ccx) ||
+                                !int.TryParse(cmdParts[2], out int ccz) ||
+                                !int.TryParse(cmdParts[3], out int cy))
+                            {
+                                Console.WriteLine("Invalid input.");
+                                break;
+                            }
+
+                            var chunk = world.GetChunk(ccx, ccz);
+                            if (chunk == null)
+                            {
+                                Console.WriteLine("Chunk not found.");
+                                break;
+                            }
+                            var data = new List<List<string>>();
+                            var legend = new Dictionary<string, string>();
+                            //var legend = new List<string>();
+                            for (int z = 0; z < chunk.Size; z++)
+                            {
+                                var list = new List<string>();
+                                for (int x = 0; x < chunk.Size; x++)
+                                {
+                                    string? id = chunk.GetBlock(x, cy, z);
+                                    if (string.IsNullOrEmpty(id))
+                                        id = "";
+                                    string toWrite = "";
+                                    string[] parts = id.Split('_');
+                                    string[] subParts = parts[0].Split(':');
+                                    if (subParts.Length > 1)
+                                        parts[0] = subParts[1];
+                                    foreach (string part in parts.Where(x => !string.IsNullOrEmpty(x)))
+                                        toWrite += part[0];
+                                    toWrite = toWrite.Trim().ToUpper();
+
+                                    int i = 0;
+                                    while (legend.ContainsKey(toWrite + (i == 0 ? "" : i.ToString())) && legend[toWrite + (i == 0 ? "" : i.ToString())] != id)
+                                        i++;
+                                    toWrite = toWrite + (i == 0 ? "" : i.ToString());
+                                    if (!legend.ContainsKey(toWrite))
+                                        legend.Add(toWrite, id);
+
+                                    list.Add(toWrite.ToUpper());
+                                }
+                                data.Add(list);
+                            }
+
+                            int max = data.Select(x => x.Select(y => y.Length).Max()).Max();
+
+                            foreach (var line in data)
+                                Console.WriteLine(string.Join(',', line.Select(x => x.PadLeft(max))));
+                            Console.WriteLine();
+                            Console.WriteLine("Legend:");
+                            foreach (var line in legend)
+                                Console.WriteLine($"{line.Key} - {line.Value}");
                             break;
                         //case "search":
                         //    if (cmdParts.Length != 2)

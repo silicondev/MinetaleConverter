@@ -1,11 +1,13 @@
 ﻿using MinetaleConverter.Base.Logic.Serialization.NBT.Attributes;
 using MinetaleConverter.Base.Models.Interfaces;
+using MinetaleConverter.Minecraft.Logic;
 using System;
 
 namespace MinetaleConverter.Minecraft.Models
 {
     public class mc_Chunk : IChunk
     {
+        public int Size => 16;
         public int DataVersion { get; set; }
         public int xPos { get; set; }
         public int zPos { get; set; }
@@ -22,14 +24,18 @@ namespace MinetaleConverter.Minecraft.Models
         public long InhabitedTime { get; internal set; }
         public byte[] NbtData { get; internal set; }
 
-        public string GetBiome(int x, int y, int z)
+        public string? GetBiome(int x, int y, int z)
         {
             throw new NotImplementedException();
         }
 
-        public string GetBlock(int x, int y, int z)
+        public string? GetBlock(int x, int y, int z)
         {
-            throw new NotImplementedException();
+            int sectionId = (int)Math.Floor(y / 16d);
+            var section = Sections.FirstOrDefault(x => x.Y == sectionId);
+            if (section == null)
+                return null;
+            return section?.GetBlock(x, y - sectionId * 16, z)?.Name;
         }
 
         public void SetBlock(string blockId, int x, int y, int z)

@@ -92,24 +92,24 @@ namespace MinetaleConverter.Hytale.Models
             throw new NotImplementedException();
         }
 
-        public string GetBiomeId(int x, int y, int z)
+        public string? GetBiomeId(int x, int y, int z)
         {
             throw new NotImplementedException();
         }
 
-        public string GetBlockId(int x, int y, int z)
+        public string? GetBlockId(int x, int y, int z)
         {
             int xChunkPos = (int)Math.Floor(x / 32d);
             int zChunkPos = (int)Math.Floor(z / 32d);
 
             var chunk = GetChunk(xChunkPos, zChunkPos);
             if (chunk == null)
-                return "Chunk not found.";
+                return null;
 
             return chunk.GetBlock(x - (xChunkPos * 32), y, z - (zChunkPos * 32));
         }
 
-        public string GetChunkId(int x, int y, int z)
+        public string? GetChunkId(int x, int y, int z)
         {
             int xChunkPos = (int)Math.Floor(x / 32d);
             int zChunkPos = (int)Math.Floor(z / 32d);
@@ -128,8 +128,8 @@ namespace MinetaleConverter.Hytale.Models
             throw new NotImplementedException();
         }
 
-        public IChunk? GetChunk(int x, int z) =>
-            Chunks.Values.Combine().FirstOrDefault(c => c.xPos == x && c.zPos == z);
+        public IChunk? GetChunk(int chunkX, int chunkZ) =>
+            Chunks.Values.Combine().FirstOrDefault(c => c.xPos == chunkX && c.zPos == chunkZ);
 
         private bool parseRegion(string regionPath, out List<hy_Chunk> chunks, bool log = true)
         {

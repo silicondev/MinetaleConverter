@@ -8,29 +8,36 @@ namespace MinetaleConverter.Hytale.Models
         public hy_ChunkComponents Components = new hy_ChunkComponents();
 
         [JsonIgnore]
+        public int Size => 32;
+
+        [JsonIgnore]
         public int xPos { get; set; }
 
         [JsonIgnore]
         public int zPos { get; set; }
 
-        public string GetBiome(int x, int y, int z)
+        public string? GetBiome(int x, int y, int z)
         {
             throw new NotImplementedException();
         }
 
-        public string GetBlock(int x, int y, int z)
+        public string? GetBlock(int x, int y, int z)
         {
             int sectionId = (int)Math.Floor(y / 32d);
+            int sectionCount = Components.ChunkColumn.Sections.Count;
+            if (sectionCount == 0 || sectionCount <= sectionId)
+                return null;
             var section = Components.ChunkColumn.Sections[sectionId];
-            return section?.GetBlock(x, y - sectionId * 32, z) ?? "Empty";
+            return section?.GetBlock(x, y - sectionId * 32, z);
         }
 
         public void SetBlock(string blockId, int x, int y, int z)
         {
             int sectionId = (int)Math.Floor(y / 32d);
-            var section = Components.ChunkColumn.Sections[sectionId];
-            if (section == null)
+            int sectionCount = Components.ChunkColumn.Sections.Count;
+            if (sectionCount == 0 || sectionCount <= sectionId)
                 return;
+            var section = Components.ChunkColumn.Sections[sectionId];
             section.SetBlock(blockId, x, y - sectionId * 32, z);
         }
     }

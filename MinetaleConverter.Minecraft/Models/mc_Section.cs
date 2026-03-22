@@ -11,6 +11,7 @@ namespace MinetaleConverter.Minecraft.Models
         public int Y { get; internal set; }
         [NbtProperty("block_states")]
         [NbtTagType(TagType.Compound)]
+        [NbtReader(typeof(mc_BlockPaletterReader))]
         public mc_ResourcePalette BlockStates
         {
             get => _blockStates;
@@ -21,6 +22,7 @@ namespace MinetaleConverter.Minecraft.Models
         }
         [NbtProperty("biomes")]
         [NbtTagType(TagType.Compound)]
+        [NbtReader(typeof(mc_BiomePaletterReader))]
         public mc_ResourcePalette Biomes
         {
             get => _biomes;
@@ -41,13 +43,13 @@ namespace MinetaleConverter.Minecraft.Models
         public mc_Resource? GetBiome(int x, int y, int z) =>
             Biomes.GetAtIndex(GetBiomeIndexFromCoords(x, y, z));
 
-        public static int GetBlockIndexFromCoords(int x, int y, int z) =>
-            y * 16 * 16 + z * 16 + x;
+        public int GetBlockIndexFromCoords(int x, int y, int z) =>
+            BlockStates.Indexer(x, y, z);
 
         public static int GetBiomeIndexFromCoords(int x, int y, int z) =>
             y / 4 * 4 * 4 + z / 4 * 4 + x / 4;
 
-        public static (int x, int y, int z) GetBlockCoordsFromIndex(int index)
+        public (int x, int y, int z) GetBlockCoordsFromIndex(int index)
         {
             for (int x = 0; x < 16; x++)
                 for (int z = 0; z < 16; z++)

@@ -1,4 +1,5 @@
 ﻿using MinetaleConverter.Base.Logic.Compression.Palette;
+using MinetaleConverter.Base.Logic.Data;
 using MinetaleConverter.Base.Logic.Extensions;
 using MinetaleConverter.Base.Logic.Serialization.NBT.Attributes;
 using MinetaleConverter.Base.Logic.Serialization.NBT.Interfaces;
@@ -28,11 +29,15 @@ namespace MinetaleConverter.Minecraft.Logic
         {
             get
             {
-                uint max = PaletteList.Keys.Max();
+                if (PaletteList.Count == 0)
+                    return new List<mc_Resource>();
+
+                uint max = PaletteList.Keys.Max() + 1;
                 mc_Resource[] result = DefaultPalette.Stretch((int)max).ToArray();
                 for (uint i = 0; i < max; i++)
                 {
-                    result[i] = PaletteList[i];
+                    if (PaletteList.ContainsKey(i))
+                        result[i] = PaletteList[i];
                 }
                 return result.ToList();
             }
@@ -58,12 +63,16 @@ namespace MinetaleConverter.Minecraft.Logic
 
         public override Func<int, int, int, int> Indexer => IndexerFunc;
 
-        public override int Length { get; protected set; }
+        public override int Length
+        {
+            get => 16 * 16 * 16;
+            protected set { }
+        }
 
-        public static Func<int, int, int, int> IndexerFunc => (x, y, z) => y * 16 * 16 + z * 16 + x;
+        public static Func<int, int, int, int> IndexerFunc => (x, y, z) => (y & 15) << 8 | (z & 15) << 4 | (x & 15);
 
         private int _minBits = 1;
-        private int _bitCount => Math.Min(_minBits, (int)Math.Ceiling(Math.Log2(PaletteList.Count)));
+        private int _bitCount => Math.Max(_minBits, (int)Math.Ceiling(Math.Log2(PaletteList.Count)));
         private int _amountInLong => 64 / _bitCount;
 
         public mc_ResourcePalette(List<mc_Resource> palettes, long[] data, int minBits = 1)
@@ -91,22 +100,27 @@ namespace MinetaleConverter.Minecraft.Logic
                 return Palettes[0];
 
             int longIndex = index / _amountInLong;
+            // index - previous indices before this long * bitcount
+            int indexInLong = (index - (longIndex * _amountInLong));
+            int start = indexInLong * _bitCount;
+
             byte[] bytes = new byte[8];
             BinaryPrimitives.WriteInt64LittleEndian(bytes, Data[longIndex]);
 
             int paletteIndex = 0;
+
             for (int i = 0; i < _bitCount; i++)
             {
-                int indexInLong = ((index + i) % _amountInLong) * _bitCount;
-                int byteIndex = indexInLong / 8;
-                int bitIndex = indexInLong % 8;
+                int bitInLong = start + i;
+                int byteIndex = bitInLong / 8;
+                int bitInByte = bitInLong % 8;
 
                 byte b = bytes[byteIndex];
-                bool v = (b & (1 << (7 - bitIndex))) != 0;
+
+                // This shouldn't work, but it does. It's reading the bytes 'backwards'. Fucking hope I never have to touch it again.
+                bool v = (b & (1 << bitInByte)) != 0;
                 if (v)
-                    paletteIndex |= (1 << (32 - i));
-                else
-                    paletteIndex &= ~(1 << (32 - i));
+                    paletteIndex |= (1 << i);
             }
 
             return Palettes[paletteIndex];

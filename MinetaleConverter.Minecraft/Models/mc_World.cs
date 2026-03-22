@@ -172,10 +172,13 @@ namespace MinetaleConverter.Minecraft.Models
                 {
                     byte[] bOffset = { 0, 0, 0, 0 };
                     sectors[0][i..(i + 3)].CopyTo(bOffset, 1);
-                    bOffset.Reverse();
+                    bOffset = bOffset.Reverse().ToArray();
                     byte len = sectors[0][i + 3];
 
-                    int offset = BinaryPrimitives.ReadInt32BigEndian(bOffset);
+                    if (len == 0)
+                        continue;
+
+                    int offset = BinaryPrimitives.ReadInt32LittleEndian(bOffset);
                     byte[] compressedData = sectors[offset..(offset + len)].Combine()[7..];
                     var method = (CompressionMethod)sectors[offset][4];
 
@@ -236,8 +239,8 @@ namespace MinetaleConverter.Minecraft.Models
             }
         }
 
-        public IChunk? GetChunk(int x, int z) =>
-            Chunks.Values.Combine().FirstOrDefault(c => c.xPos == x && c.zPos == z);
+        public IChunk? GetChunk(int chunkX, int chunkZ) =>
+            Chunks.Values.Combine().FirstOrDefault(c => c.xPos == chunkX && c.zPos == chunkZ);
     }
 
     public enum CompressionMethod

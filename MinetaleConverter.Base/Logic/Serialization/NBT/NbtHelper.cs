@@ -1,5 +1,7 @@
 ﻿using MinetaleConverter.Base.Logic.Extensions;
 using MinetaleConverter.Base.Logic.Serialization.NBT.Attributes;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using SharpNBT;
 using System;
 using System.Collections;
@@ -36,6 +38,15 @@ namespace MinetaleConverter.Base.Logic.Serialization.NBT
                     continue;
 
                 var property = propDict[element.Name];
+
+                var readerAttribute = property.GetAttribute<NbtReaderAttribute>();
+                if (readerAttribute != null)
+                {
+                    var jObj = JObject.Parse(element.ToJson());
+                    var jVal = readerAttribute.Converter(jObj);
+                    property.SetValue(obj, jVal);
+                    continue;
+                }
 
                 var tagTypeAttr = property.GetAttribute<NbtTagTypeAttribute>();
                 var tagType = tagTypeAttr?.Type ?? element.Type;

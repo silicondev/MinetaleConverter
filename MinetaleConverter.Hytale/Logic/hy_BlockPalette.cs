@@ -47,6 +47,11 @@ namespace MinetaleConverter.Hytale.Logic
 
         public override string? GetAtIndex(int index)
         {
+            if (PaletteList.Count == 0)
+                return null;
+            if (PaletteList.Count == 1)
+                return PaletteList.First().Value;
+
             int indexLength = 8;
 
             switch (_blockPaletteType)
